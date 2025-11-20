@@ -1,6 +1,5 @@
 numpy
 matplotlib
-tkinter
 
 ### Optional:
 pyqt5
