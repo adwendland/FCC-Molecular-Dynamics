@@ -1,7 +1,3 @@
 numpy
 matplotlib
-
-### Optional:
-pyqt5
-pyovito
-
+streamlit
