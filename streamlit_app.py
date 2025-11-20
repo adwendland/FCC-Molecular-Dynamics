@@ -1,9 +1,10 @@
 # streamlit_app.py
-# FCC Molecular Dynamics – Web Version 
+# FCC Molecular Dynamics – Web Version (persistent results + 3D viewer)
 
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 
 from md.system import System
 from md.constants import get_lattice_constant, get_amu, get_sigma, get_eps
@@ -46,10 +47,75 @@ def initialize_velocities(system, T, seed=123):
 
 
 # ------------------------------------------------------------
+# Browser-native 3D atom visualizer (Plotly)
+# ------------------------------------------------------------
+def visualize_atoms_3d(positions, box, symbol="X"):
+    pos = np.asarray(positions)
+    x, y, z = pos.T
+    Lx, Ly, Lz = np.asarray(box, dtype=float)
+
+    fig = go.Figure()
+
+    # Atoms
+    fig.add_trace(
+        go.Scatter3d(
+            x=x,
+            y=y,
+            z=z,
+            mode="markers",
+            marker=dict(size=4, opacity=0.9),
+            name=symbol,
+        )
+    )
+
+    # Simulation box wireframe
+    corners = np.array([
+        [0, 0, 0],
+        [Lx, 0, 0],
+        [Lx, Ly, 0],
+        [0, Ly, 0],
+        [0, 0, Lz],
+        [Lx, 0, Lz],
+        [Lx, Ly, Lz],
+        [0, Ly, Lz],
+    ])
+
+    edges = [
+        (0, 1), (1, 2), (2, 3), (3, 0),
+        (4, 5), (5, 6), (6, 7), (7, 4),
+        (0, 4), (1, 5), (2, 6), (3, 7),
+    ]
+
+    for i, j in edges:
+        fig.add_trace(
+            go.Scatter3d(
+                x=[corners[i, 0], corners[j, 0]],
+                y=[corners[i, 1], corners[j, 1]],
+                z=[corners[i, 2], corners[j, 2]],
+                mode="lines",
+                line=dict(width=2),
+                showlegend=False,
+            )
+        )
+
+    fig.update_layout(
+        title=f"{symbol} Atom Configuration",
+        scene=dict(
+            xaxis=dict(title="x (Å)", range=[0, Lx], showbackground=False),
+            yaxis=dict(title="y (Å)", range=[0, Ly], showbackground=False),
+            zaxis=dict(title="z (Å)", range=[0, Lz], showbackground=False),
+            aspectmode="data",
+        ),
+        margin=dict(l=0, r=0, t=30, b=0),
+        showlegend=False,
+    )
+    return fig
+
+
+# ------------------------------------------------------------
 # Streamlit UI
 # ------------------------------------------------------------
 st.set_page_config(page_title="FCC Molecular Dynamics", layout="wide")
-
 st.title("FCC Molecular Dynamics - Web Version")
 
 st.sidebar.header("Simulation Parameters")
@@ -85,7 +151,7 @@ run_btn = st.sidebar.button("Run Simulation")
 
 
 # ------------------------------------------------------------
-# Run simulation when button pressed
+# Run simulation when button pressed (store results in session_state)
 # ------------------------------------------------------------
 if run_btn:
     st.write("### Running simulation…")
@@ -103,10 +169,12 @@ if run_btn:
     initialize_velocities(system, T_target)
     system.remove_drift()
 
+    # Initial forces / potential energy
     pe0 = system.compute_forces(
-                lambda pos, box, pairs: lj_forces(pos, box, pairs,
-                                                  epsilon=epsilon, sigma=sigma, rcut=rcut)
-            )
+        lambda pos, box, pairs: lj_forces(
+            pos, box, pairs, epsilon=epsilon, sigma=sigma, rcut=rcut
+        )
+    )
     system.potential_energy = pe0
 
     # --- Equilibration (always NVT Berendsen) ---
@@ -132,10 +200,13 @@ if run_btn:
 
     sample_idx = 0
 
-    # Compute initial forces & potential energy (important when equil steps = 0)
-    system.compute_forces(
-        lambda pos, box, pairs: lj_forces(pos, box, pairs, epsilon, sigma, rcut)
+    # Compute forces before starting production (in case equil steps = 0)
+    pe = system.compute_forces(
+        lambda pos, box, pairs: lj_forces(
+            pos, box, pairs, epsilon=epsilon, sigma=sigma, rcut=rcut
+        )
     )
+    system.potential_energy = pe
 
     positions_traj[0] = system.pos.copy()
     velocities_traj[0] = system.vel.copy()
@@ -165,6 +236,14 @@ if run_btn:
 
         # Sample physical quantities
         if step % sample_interval == 0:
+            # Update forces / PE for correct pressure/energy if needed
+            pe = system.compute_forces(
+                lambda pos, box, pairs: lj_forces(
+                    pos, box, pairs, epsilon=epsilon, sigma=sigma, rcut=rcut
+                )
+            )
+            system.potential_energy = pe
+
             sample_idx += 1
             positions_traj[sample_idx] = system.pos.copy()
             velocities_traj[sample_idx] = system.vel.copy()
@@ -187,7 +266,7 @@ if run_btn:
     dt_sample = dt * sample_interval
 
     # --------------------------------------------------------
-    # Analysis (RDF, MSD, VACF, CN, Cv, diffusion, S(k))
+    # Analysis (RDF, MSD, VACF, S(k), diffusion, Cv)
     # --------------------------------------------------------
     st.write("### Computing analysis (RDF, MSD, VACF, S(k), diffusion, Cv)…")
 
@@ -224,26 +303,92 @@ if run_btn:
     k_vals = np.linspace(0.1, 12.0, 300)
     k_vals, S_k = compute_structure_factor(k_vals, r, g_r, rho)
 
-    st.success("Simulation and analysis complete!")
+    # Trajectory bytes for download
+    try:
+        with open(traj_filename, "rb") as f:
+            xyz_bytes = f.read()
+    except FileNotFoundError:
+        xyz_bytes = None
 
     # --------------------------------------------------------
-    # Summary
+    # Store everything in session_state so it persists
     # --------------------------------------------------------
+    st.session_state["results"] = {
+        "metal": metal,
+        "box": system.box.copy(),
+        "positions_traj": positions_traj,
+        "velocities_traj": velocities_traj,
+        "pressure_traj": pressure_traj,
+        "energy_traj": energy_traj,
+        "temp_traj": temp_traj,
+        "dt_sample": dt_sample,
+        "r": r,
+        "g_r": g_r,
+        "r_cn": r_cn,
+        "t_msd": t_msd,
+        "msd": msd,
+        "t_vacf": t_vacf,
+        "vacf": vacf,
+        "k_vals": k_vals,
+        "S_k": S_k,
+        "D_msd": D_msd,
+        "D_vacf": D_vacf,
+        "CN": CN,
+        "Cv": Cv,
+        "T_mean": T_mean,
+        "P_mean": float(np.mean(pressure_traj)),
+        "traj_bytes": xyz_bytes,
+        "traj_filename": traj_filename,
+    }
+
+    st.success("Simulation and analysis complete! Results are now cached.")
+
+
+# --------------------------------------------------------
+# Display results (if we have any cached)
+# --------------------------------------------------------
+if "results" in st.session_state:
+    res = st.session_state["results"]
+
     st.write("### Summary")
-    st.write(f"Mean T: {T_mean:.3f} K")
-    st.write(f"Mean P: {np.mean(pressure_traj):.5e} eV/Å³")
-    st.write(f"CN (FCC ideal ~12): {CN:.3f}")
-    st.write(f"Cv: {Cv:.5e} eV/K")
-    st.write(f"D (MSD):  {D_msd:.5e} Å²/fs")
-    st.write(f"D (VACF): {D_vacf:.5e} Å²/fs")
+    st.write(f"Metal: {res['metal']}")
+    st.write(f"Mean T: {res['T_mean']:.3f} K")
+    st.write(f"Mean P: {res['P_mean']:.5e} eV/Å³")
+    st.write(f"CN (FCC ideal ~12): {res['CN']:.3f}")
+    st.write(f"Cv: {res['Cv']:.5e} eV/K")
+    st.write(f"D (MSD):  {res['D_msd']:.5e} Å²/fs")
+    st.write(f"D (VACF): {res['D_vacf']:.5e} Å²/fs")
 
-    # --------------------------------------------------------
-    # Plots
-    # --------------------------------------------------------
+    # 3D visualization
+    st.write(f"### Interactive {res['metal']} 3D Visualizer")
+    
+    # --- 3D visualization with time slider (fs) ---
+    nframes = len(res["positions_traj"])
+    dt = res["dt_sample"]  # fs per frame
+    t_max = (nframes - 1) * dt
+
+    t_fs = st.slider(
+        "Time (fs)",
+        min_value=0.0,
+        max_value=float(t_max),
+        value=0.0,
+        step=float(dt),
+        key="time_slider"
+    )
+
+    # Map time → nearest frame index
+    frame = int(round(t_fs / dt))
+
+    fig3d = visualize_atoms_3d(
+        res["positions_traj"][frame], res["box"], symbol=res["metal"]
+    )
+    st.plotly_chart(fig3d, use_container_width=True)
+
+
     # RDF
     fig, ax = plt.subplots()
-    ax.plot(r, g_r)
-    ax.axvline(r_cn, ls="--", alpha=0.6)
+    ax.plot(res["r"], res["g_r"])
+    ax.axvline(res["r_cn"], ls="--", alpha=0.6)
     ax.set_xlabel("r (Å)")
     ax.set_ylabel("g(r)")
     ax.set_title("Radial Distribution Function")
@@ -251,7 +396,7 @@ if run_btn:
 
     # MSD
     fig, ax = plt.subplots()
-    ax.plot(t_msd, msd)
+    ax.plot(res["t_msd"], res["msd"])
     ax.set_xlabel("t (fs)")
     ax.set_ylabel("MSD (Å²)")
     ax.set_title("Mean Squared Displacement")
@@ -259,11 +404,12 @@ if run_btn:
 
     # VACF (normalized)
     fig, ax = plt.subplots()
+    vacf = res["vacf"]
     if vacf[0] != 0:
         vacf_norm = vacf / vacf[0]
     else:
         vacf_norm = vacf
-    ax.plot(t_vacf, vacf_norm)
+    ax.plot(res["t_vacf"], vacf_norm)
     ax.set_xlabel("t (fs)")
     ax.set_ylabel("Normalized VACF")
     ax.set_title("Velocity Autocorrelation Function")
@@ -271,43 +417,39 @@ if run_btn:
 
     # Structure factor
     fig, ax = plt.subplots()
-    ax.plot(k_vals, S_k)
+    ax.plot(res["k_vals"], res["S_k"])
     ax.set_xlabel("k (1/Å)")
     ax.set_ylabel("S(k)")
     ax.set_title("Static Structure Factor")
     st.pyplot(fig)
 
-    # Temperature vs time (fs)
-    t_temp = np.arange(len(temp_traj)) * dt_sample
+    # Temperature vs time
+    t_temp = np.arange(len(res["temp_traj"])) * res["dt_sample"]
     fig, ax = plt.subplots()
-    ax.plot(t_temp, temp_traj)
+    ax.plot(t_temp, res["temp_traj"])
     ax.set_xlabel("t (fs)")
     ax.set_ylabel("T (K)")
     ax.set_title("Temperature vs Time")
     st.pyplot(fig)
 
-    # Pressure vs time (fs)
-    t_pres = np.arange(len(pressure_traj)) * dt_sample
+    # Pressure vs time
+    t_pres = np.arange(len(res["pressure_traj"])) * res["dt_sample"]
     fig, ax = plt.subplots()
-    ax.plot(t_pres, pressure_traj)
+    ax.plot(t_pres, res["pressure_traj"])
     ax.set_xlabel("t (fs)")
     ax.set_ylabel("P (eV/Å³)")
     ax.set_title("Pressure vs Time")
     st.pyplot(fig)
 
-
-    # --------------------------------------------------------
-    # Trajectory download (.xyz)
-    # --------------------------------------------------------
-    try:
-        with open(traj_filename, "rb") as f:
-            xyz_bytes = f.read()
-
+    # Trajectory download
+    if res["traj_bytes"] is not None:
         st.download_button(
             label="Download trajectory (.xyz)",
-            data=xyz_bytes,
-            file_name=traj_filename,
+            data=res["traj_bytes"],
+            file_name=res["traj_filename"],
             mime="chemical/x-xyz",
         )
-    except FileNotFoundError:
+    else:
         st.warning("No trajectory file found. Try rerunning the simulation.")
+else:
+    st.info("Set parameters in the sidebar and click **Run Simulation** to begin.")
