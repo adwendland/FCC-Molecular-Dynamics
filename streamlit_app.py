@@ -1,5 +1,5 @@
 # streamlit_app.py
-# FCC Molecular Dynamics – Web Version (persistent results + 3D viewer)
+# FCC Molecular Dynamics – Web Version (persistent results + 3D viewer + plot carousel)
 
 import streamlit as st
 import numpy as np
@@ -132,7 +132,7 @@ T_target = st.sidebar.number_input("Temperature (K)", min_value=1.0, value=300.0
 
 ensemble = st.sidebar.selectbox("Ensemble", ["NVT (Berendsen)", "NVE"])
 
-dt = st.sidebar.number_input("dt (fs)", min_value=1e-5, value=0.001, format="%.6f")
+dt = st.sidebar.number_input("dt (fs)", min_value=1e-5, value=0.001, format="%.3f")
 
 nsteps_equil = st.sidebar.number_input(
     "Equilibration steps", min_value=0, value=2000, step=100
@@ -268,7 +268,7 @@ if run_btn:
     # --------------------------------------------------------
     # Analysis (RDF, MSD, VACF, S(k), diffusion, Cv)
     # --------------------------------------------------------
-    st.write("### Computing analysis (RDF, MSD, VACF, S(k), diffusion, Cv)…")
+    st.write("### Computing analysis (RDF, MSD, VACF, S(k), D, C)…")
 
     # RDF
     r_max = 0.45 * min(system.box)
@@ -341,107 +341,117 @@ if run_btn:
         "traj_filename": traj_filename,
     }
 
-    st.success("Simulation and analysis complete! Results are now cached.")
+    st.success("Simulation and analysis complete!")
 
 
 # --------------------------------------------------------
-# Display results (if we have any cached)
+# Display results
 # --------------------------------------------------------
 if "results" in st.session_state:
     res = st.session_state["results"]
 
-    st.write("### Summary")
-    st.write(f"Metal: {res['metal']}")
-    st.write(f"Mean T: {res['T_mean']:.3f} K")
-    st.write(f"Mean P: {res['P_mean']:.5e} eV/Å³")
-    st.write(f"CN (FCC ideal ~12): {res['CN']:.3f}")
-    st.write(f"Cv: {res['Cv']:.5e} eV/K")
-    st.write(f"D (MSD):  {res['D_msd']:.5e} Å²/fs")
-    st.write(f"D (VACF): {res['D_vacf']:.5e} Å²/fs")
+    # -------- Row 1: Summary (left) + Plot carousel (right) --------
+    col1, col2 = st.columns(2)
 
-    # 3D visualization
-    st.write(f"### Interactive {res['metal']} 3D Visualizer")
-    
-    # --- 3D visualization with time slider (fs) ---
+    with col1:
+        st.write("### Summary")
+        st.write(f"**FCC Metal:** {res['metal']}")
+        st.write(f"**Mean Temperature:** {res['T_mean']:.3f} K")
+        st.write(f"**Mean Pressure:** {res['P_mean']:.5e} eV/Å³")
+        st.write(f"**Coordination Number (FCC ideal ~12):** {res['CN']:.3f}")
+        st.write(f"**Heat Capacity (C):** {res['Cv']:.5e} eV/K")
+        st.write(f"**Diffusion Coefficient (D) [MSD]:**  {res['D_msd']:.5e} Å²/fs")
+        st.write(f"**Diffusion Coefficient (D) [VACF]:** {res['D_vacf']:.5e} Å²/fs")
+
+    with col2:
+        st.write("### Plots")
+        plot_choice = st.selectbox(
+            "Select plot",
+            [
+                "Radial Distribution Function g(r)",
+                "Mean Squared Displacement",
+                "Velocity Autocorrelation Function",
+                "Static Structure Factor S(k)",
+                "Temperature vs Time",
+                "Pressure vs Time",
+            ],
+            index=0,
+            key="plot_choice",
+        )
+
+        fig, ax = plt.subplots()
+
+        if plot_choice == "Radial Distribution Function g(r)":
+            ax.plot(res["r"], res["g_r"])
+            ax.axvline(res["r_cn"], ls="--", alpha=0.6)
+            ax.set_xlabel("r (Å)")
+            ax.set_ylabel("g(r)")
+            ax.set_title("Radial Distribution Function")
+
+        elif plot_choice == "Mean Squared Displacement":
+            ax.plot(res["t_msd"], res["msd"])
+            ax.set_xlabel("t (fs)")
+            ax.set_ylabel("MSD (Å²)")
+            ax.set_title("Mean Squared Displacement")
+
+        elif plot_choice == "Velocity Autocorrelation Function":
+            vacf = res["vacf"]
+            if vacf[0] != 0:
+                vacf_norm = vacf / vacf[0]
+            else:
+                vacf_norm = vacf
+            ax.plot(res["t_vacf"], vacf_norm)
+            ax.set_xlabel("t (fs)")
+            ax.set_ylabel("Normalized VACF")
+            ax.set_title("Velocity Autocorrelation Function")
+
+        elif plot_choice == "Static Structure Factor S(k)":
+            ax.plot(res["k_vals"], res["S_k"])
+            ax.set_xlabel("k (1/Å)")
+            ax.set_ylabel("S(k)")
+            ax.set_title("Static Structure Factor")
+
+        elif plot_choice == "Temperature vs Time":
+            t_temp = np.arange(len(res["temp_traj"])) * res["dt_sample"]
+            ax.plot(t_temp, res["temp_traj"])
+            ax.set_xlabel("t (fs)")
+            ax.set_ylabel("T (K)")
+            ax.set_title("Temperature vs Time")
+
+        elif plot_choice == "Pressure vs Time":
+            t_pres = np.arange(len(res["pressure_traj"])) * res["dt_sample"]
+            ax.plot(t_pres, res["pressure_traj"])
+            ax.set_xlabel("t (fs)")
+            ax.set_ylabel("P (eV/Å³)")
+            ax.set_title("Pressure vs Time")
+
+        st.pyplot(fig)
+
+    # -------- Row 2: Visualizer full width below --------
+    st.write(f"### 3D {res['metal']} Interactive Visualizer")
     nframes = len(res["positions_traj"])
-    dt = res["dt_sample"]  # fs per frame
-    t_max = (nframes - 1) * dt
+    dt_samp = res["dt_sample"]  # fs per saved frame
+    t_max = (nframes - 1) * dt_samp
 
     t_fs = st.slider(
         "Time (fs)",
         min_value=0.0,
         max_value=float(t_max),
         value=0.0,
-        step=float(dt),
-        key="time_slider"
+        step=float(dt_samp),
+        key="time_slider",
     )
-
-    # Map time → nearest frame index
-    frame = int(round(t_fs / dt))
+    frame = int(round(t_fs / dt_samp))
 
     fig3d = visualize_atoms_3d(
         res["positions_traj"][frame], res["box"], symbol=res["metal"]
     )
     st.plotly_chart(fig3d, use_container_width=True)
 
+        # -------- Downloads at bottom --------
+    st.write("### Downloadable Data Files")
 
-    # RDF
-    fig, ax = plt.subplots()
-    ax.plot(res["r"], res["g_r"])
-    ax.axvline(res["r_cn"], ls="--", alpha=0.6)
-    ax.set_xlabel("r (Å)")
-    ax.set_ylabel("g(r)")
-    ax.set_title("Radial Distribution Function")
-    st.pyplot(fig)
-
-    # MSD
-    fig, ax = plt.subplots()
-    ax.plot(res["t_msd"], res["msd"])
-    ax.set_xlabel("t (fs)")
-    ax.set_ylabel("MSD (Å²)")
-    ax.set_title("Mean Squared Displacement")
-    st.pyplot(fig)
-
-    # VACF (normalized)
-    fig, ax = plt.subplots()
-    vacf = res["vacf"]
-    if vacf[0] != 0:
-        vacf_norm = vacf / vacf[0]
-    else:
-        vacf_norm = vacf
-    ax.plot(res["t_vacf"], vacf_norm)
-    ax.set_xlabel("t (fs)")
-    ax.set_ylabel("Normalized VACF")
-    ax.set_title("Velocity Autocorrelation Function")
-    st.pyplot(fig)
-
-    # Structure factor
-    fig, ax = plt.subplots()
-    ax.plot(res["k_vals"], res["S_k"])
-    ax.set_xlabel("k (1/Å)")
-    ax.set_ylabel("S(k)")
-    ax.set_title("Static Structure Factor")
-    st.pyplot(fig)
-
-    # Temperature vs time
-    t_temp = np.arange(len(res["temp_traj"])) * res["dt_sample"]
-    fig, ax = plt.subplots()
-    ax.plot(t_temp, res["temp_traj"])
-    ax.set_xlabel("t (fs)")
-    ax.set_ylabel("T (K)")
-    ax.set_title("Temperature vs Time")
-    st.pyplot(fig)
-
-    # Pressure vs time
-    t_pres = np.arange(len(res["pressure_traj"])) * res["dt_sample"]
-    fig, ax = plt.subplots()
-    ax.plot(t_pres, res["pressure_traj"])
-    ax.set_xlabel("t (fs)")
-    ax.set_ylabel("P (eV/Å³)")
-    ax.set_title("Pressure vs Time")
-    st.pyplot(fig)
-
-    # Trajectory download
+    # Trajectory (.xyz) from OVITO-style writer
     if res["traj_bytes"] is not None:
         st.download_button(
             label="Download trajectory (.xyz)",
@@ -451,5 +461,106 @@ if "results" in st.session_state:
         )
     else:
         st.warning("No trajectory file found. Try rerunning the simulation.")
+
+    # Helper: arrays -> CSV bytes
+    def to_csv(*cols, headers):
+        import io, csv
+        buf = io.StringIO()
+        writer = csv.writer(buf)
+        writer.writerow(headers)
+        for row in zip(*cols):
+            writer.writerow(row)
+        return buf.getvalue().encode()
+
+    # RDF (r, g(r))
+    rdf_bytes = to_csv(
+        res["r"], res["g_r"],
+        headers=["r (A)", "g(r)"]
+    )
+    st.download_button(
+        label="Download RDF (CSV)",
+        data=rdf_bytes,
+        file_name="rdf.csv",
+        mime="text/csv",
+    )
+
+    # MSD
+    msd_bytes = to_csv(
+        res["t_msd"], res["msd"],
+        headers=["t (fs)", "MSD (A^2)"]
+    )
+    st.download_button(
+        label="Download MSD (CSV)",
+        data=msd_bytes,
+        file_name="msd.csv",
+        mime="text/csv",
+    )
+
+    # VACF
+    vacf_bytes = to_csv(
+        res["t_vacf"], res["vacf"],
+        headers=["t (fs)", "VACF"]
+    )
+    st.download_button(
+        label="Download VACF (CSV)",
+        data=vacf_bytes,
+        file_name="vacf.csv",
+        mime="text/csv",
+    )
+
+    # Structure factor S(k)
+    sk_bytes = to_csv(
+        res["k_vals"], res["S_k"],
+        headers=["k (1/A)", "S(k)"]
+    )
+    st.download_button(
+        label="Download S(k) (CSV)",
+        data=sk_bytes,
+        file_name="structure_factor.csv",
+        mime="text/csv",
+    )
+
+    # Thermodynamic time series: T(t), P(t), E(t)
+    t_temp = np.arange(len(res["temp_traj"])) * res["dt_sample"]
+    thermo_bytes = to_csv(
+        t_temp,
+        res["temp_traj"],
+        res["pressure_traj"],
+        res["energy_traj"],
+        headers=["t (fs)", "T(K)", "P(eV/A^3)", "E_total(eV)"]
+    )
+    st.download_button(
+        label="Download Thermodynamic Data (CSV)",
+        data=thermo_bytes,
+        file_name="thermo.csv",
+        mime="text/csv",
+    )
+
+    # Final atomic positions (last frame)
+    final_positions = res["positions_traj"][-1]
+    final_bytes = to_csv(
+        final_positions[:, 0],
+        final_positions[:, 1],
+        final_positions[:, 2],
+        headers=["x (A)", "y (A)", "z (A)"]
+    )
+    st.download_button(
+        label="Download Final Snapshot (CSV)",
+        data=final_bytes,
+        file_name="final_snapshot.csv",
+        mime="text/csv",
+    )
+
+    # Full simulation dump as NPZ (everything in res)
+    import io
+    npz_buf = io.BytesIO()
+    np.savez(npz_buf, **res)
+    st.download_button(
+        label="Download Full Simulation (.npz)",
+        data=npz_buf.getvalue(),
+        file_name="simulation_data.npz",
+        mime="application/octet-stream",
+    )
+
 else:
     st.info("Set parameters in the sidebar and click **Run Simulation** to begin.")
