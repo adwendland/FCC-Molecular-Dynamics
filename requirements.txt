@@ -2,7 +2,7 @@ numpy
 matplotlib
 tkinter
 
-Optional:
+### Optional:
 pyqt5
 pyovito
 
