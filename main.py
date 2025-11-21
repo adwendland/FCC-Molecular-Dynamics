@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from md.system import System
-from md.constants import get_lattice_constant, get_amu, get_sigma, get_eps
+from md.constants import get_lattice_constant, get_amu, get_mass_internal, get_sigma, get_eps
 from md.lattice import make_fcc_lattice
 from md.integrator import step_nve, step_nvt_berendsen
 from md.utils import write_xyz
@@ -70,7 +70,7 @@ def initialize_velocities(system, T, seed=123):
 # Setup and initialization
 # -----------------------------
 a = get_lattice_constant(metal)
-mass = get_amu(metal) * 103.6427
+mass = get_mass_internal(metal)
 
 epsilon = get_eps(metal)
 sigma   = get_sigma(metal)

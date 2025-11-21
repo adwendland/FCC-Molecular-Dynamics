@@ -8,7 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from md.system import System
-from md.constants import get_lattice_constant, get_amu, get_sigma, get_eps
+from md.constants import get_lattice_constant, get_mass_internal, get_amu, get_sigma, get_eps
 from md.forces import lj_forces
 from md.lattice import make_fcc_lattice
 from md.integrator import step_nve, step_nvt_berendsen
@@ -311,7 +311,7 @@ class MDGUI(tk.Tk):
             traj_file = p["traj_file"]
 
             a = get_lattice_constant(metal)
-            mass = get_amu(metal) * 103.6427
+            mass = get_mass_internal(metal)
             epsilon = get_eps(metal)
             sigma = get_sigma(metal)
             rcut = 2.5 * sigma

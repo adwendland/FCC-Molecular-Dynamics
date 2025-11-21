@@ -10,6 +10,8 @@ try:
 except ImportError:
     _HAVE_CPP = False
 
+#_HAVE_CPP = False
+
 
 def velocity_verlet(system, dt, epsilon=1.0, sigma=1.0, rcut=2.5):
     """
@@ -22,8 +24,14 @@ def velocity_verlet(system, dt, epsilon=1.0, sigma=1.0, rcut=2.5):
 
     # Use C++ path when possible
     if _HAVE_CPP and np.isscalar(m):
-        # Make sure neighbor list exists
-        pairs = system.nl.pairs
+        # --- NEW: keep neighbor list in sync ---
+        if hasattr(system, "nl") and system.nl is not None:
+            system.nl.update(system.pos)
+            pairs = system.nl.pairs
+        else:
+            # If for some reason there's no neighbor list, bail out to Python
+            return _velocity_verlet_python(system, dt, epsilon, sigma, rcut)
+
         # Ensure int64 for C++
         pairs64 = pairs.astype(np.int64, copy=False)
 
@@ -44,10 +52,16 @@ def velocity_verlet(system, dt, epsilon=1.0, sigma=1.0, rcut=2.5):
         system.potential_energy = pe_new
         system.kinetic_energy()
         return
-
+    
     # ----------------------------
     # Fallback: original Python/Numpy version
     # ----------------------------
+    return _velocity_verlet_python(system, dt, epsilon, sigma, rcut)
+
+
+### Python version of velocity Verlet
+def _velocity_verlet_python(system, dt, epsilon, sigma, rcut):
+    m = system.mass
 
     # 1) Compute forces at current positions
     pe = system.compute_forces(
@@ -60,7 +74,6 @@ def velocity_verlet(system, dt, epsilon=1.0, sigma=1.0, rcut=2.5):
         system.vel += 0.5 * dt * system.force * inv_m
         system.pos += dt * system.vel
     else:
-        # m is per-particle masses
         system.vel += 0.5 * dt * (system.force / m[:, None])
         system.pos += dt * system.vel
 
@@ -82,6 +95,8 @@ def velocity_verlet(system, dt, epsilon=1.0, sigma=1.0, rcut=2.5):
 
     # 6) Update kinetic energy
     system.kinetic_energy()
+
+    
 
 
 # ============================================================

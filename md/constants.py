@@ -1,5 +1,6 @@
 import numpy as np
 
+AMU_TO_INTERNAL = 103.6427
 
 def get_lattice_constant(id):
     if id == "Ag":
@@ -44,6 +45,12 @@ def get_amu(id):
         print("ERROR: Invalid material entered.")
         return -1
     return amu
+
+def get_mass_internal(id):
+    """
+    Return atomic mass in MD internal units: eV*fs^2/Å^2.
+    """
+    return get_amu(id) * AMU_TO_INTERNAL
 
 # Returns sigma for LJ potential
 # Needed rescaling
