@@ -130,9 +130,7 @@ nz = st.sidebar.number_input("nz", min_value=1, value=3, step=1)
 
 T_target = st.sidebar.number_input("Temperature (K)", min_value=1.0, value=300.0)
 
-ensemble = st.sidebar.selectbox("Ensemble", ["NVT (Berendsen)", "NVE"])
-
-dt = st.sidebar.number_input("dt (fs)", min_value=1e-5, value=0.001, format="%.3f")
+dt = st.sidebar.number_input("Time step dt (fs)", min_value=1e-5, value=0.001, format="%.3f")
 
 nsteps_equil = st.sidebar.number_input(
     "Equilibration steps", min_value=0, value=2000, step=100
@@ -146,6 +144,8 @@ sample_interval = st.sidebar.number_input(
 xyz_out_interval = st.sidebar.number_input(
     ".xyz output interval", min_value=1, value=100, step=1
 )
+
+ensemble = st.sidebar.selectbox("Ensemble", ["NVT (Berendsen)", "NVE"])
 
 run_btn = st.sidebar.button("Run Simulation")
 
@@ -163,7 +163,17 @@ if run_btn:
     sigma = get_sigma(metal)
     rcut = 2.5 * sigma
 
-    pos, box = make_fcc_lattice(a, int(nx), int(ny), int(nz))
+    # *** ROBUST make_fcc_lattice HANDLING (fixes tuple/shape issue) ***
+    lattice_out = make_fcc_lattice(a, int(nx), int(ny), int(nz))
+    if isinstance(lattice_out, tuple) and len(lattice_out) == 2:
+        pos, box = lattice_out
+    else:
+        pos = np.asarray(lattice_out)
+        box = np.array(
+            [int(nx) * a, int(ny) * a, int(nz) * a],
+            dtype=float,
+        )
+
     system = System(pos, mass, box, symbol=metal, cutoff=rcut, skin=0.3)
 
     initialize_velocities(system, T_target)
@@ -315,6 +325,8 @@ if run_btn:
     # --------------------------------------------------------
     st.session_state["results"] = {
         "metal": metal,
+        "time_tot": dt * nsteps,
+        "num_atoms": positions_traj.shape[1],
         "box": system.box.copy(),
         "positions_traj": positions_traj,
         "velocities_traj": velocities_traj,
@@ -354,11 +366,13 @@ if "results" in st.session_state:
     col1, col2 = st.columns(2)
 
     with col1:
-        st.write("### Summary")
+        st.write("### Run Summary")
         st.write(f"**FCC Metal:** {res['metal']}")
+        st.write(f"**Number of Atoms:** {res['num_atoms']}")
+        st.write(f"**Simulation Time:** {res['time_tot']} fs")
+        st.write(f"**Coordination Number (FCC ideal ~12):** {res['CN']:.3f}")
         st.write(f"**Mean Temperature:** {res['T_mean']:.3f} K")
         st.write(f"**Mean Pressure:** {res['P_mean']:.5e} eV/Å³")
-        st.write(f"**Coordination Number (FCC ideal ~12):** {res['CN']:.3f}")
         st.write(f"**Heat Capacity (C):** {res['Cv']:.5e} eV/K")
         st.write(f"**Diffusion Coefficient (D) [MSD]:**  {res['D_msd']:.5e} Å²/fs")
         st.write(f"**Diffusion Coefficient (D) [VACF]:** {res['D_vacf']:.5e} Å²/fs")
