@@ -448,7 +448,7 @@ if "results" in st.session_state:
     )
     st.plotly_chart(fig3d, use_container_width=True)
 
-        # -------- Downloads at bottom --------
+    # -------- Downloads at bottom --------
     st.write("### Downloadable Data Files")
 
     # Trajectory (.xyz) from OVITO-style writer
