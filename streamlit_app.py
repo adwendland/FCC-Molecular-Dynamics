@@ -446,7 +446,7 @@ if "results" in st.session_state:
     fig3d = visualize_atoms_3d(
         res["positions_traj"][frame], res["box"], symbol=res["metal"]
     )
-    st.plotly_chart(fig3d, use_container_width=True)
+    st.plotly_chart(fig3d, width="stretch")
 
     # -------- Downloads at bottom --------
     st.write("### Downloadable Data Files")
