@@ -68,7 +68,7 @@ double lj_forces_cpp(py::array_t<double> pos_in,
         double r2 = dr[0]*dr[0] + dr[1]*dr[1] + dr[2]*dr[2];
         if (r2 >= rcut2) continue;
 
-        // EXACT Python formula
+        // Make LJ a little cheaper again
         double inv_r2_sigma = sig2 / r2;                  // (σ/r)^2
         double inv_r6  = inv_r2_sigma * inv_r2_sigma * inv_r2_sigma; // (σ/r)^6
         double inv_r12 = inv_r6 * inv_r6;                 // (σ/r)^12
@@ -77,7 +77,7 @@ double lj_forces_cpp(py::array_t<double> pos_in,
         double v_ij = 4.0 * epsilon * (inv_r12 - inv_r6);
         pe += v_ij;
 
-        // Force (matches forces.py: fij_over_r2 * dr)
+        // Force 
         double fij_over_r2 =
             24.0 * epsilon * (2.0 * inv_r12 - inv_r6) / r2;
 

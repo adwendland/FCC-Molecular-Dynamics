@@ -1,5 +1,5 @@
 # streamlit_app.py
-# FCC Molecular Dynamics – Web Version (persistent results + 3D viewer + plot carousel)
+# FCC Molecular Dynamics – Web Version
 
 import streamlit as st
 import numpy as np
@@ -163,7 +163,7 @@ if run_btn:
     sigma = get_sigma(metal)
     rcut = 2.5 * sigma
 
-    # *** ROBUST make_fcc_lattice HANDLING (fixes tuple/shape issue) ***
+    # *** make_fcc_lattice handling ***
     lattice_out = make_fcc_lattice(a, int(nx), int(ny), int(nz))
     if isinstance(lattice_out, tuple) and len(lattice_out) == 2:
         pos, box = lattice_out
@@ -173,6 +173,11 @@ if run_btn:
             [int(nx) * a, int(ny) * a, int(nz) * a],
             dtype=float,
         )
+
+    # Proper centering
+    center_now = np.mean(pos, axis=0)
+    center_target = box / 2.0
+    pos += (center_target - center_now) 
 
     system = System(pos, mass, box, symbol=metal, cutoff=rcut, skin=0.3)
 
@@ -321,10 +326,12 @@ if run_btn:
         xyz_bytes = None
 
     # --------------------------------------------------------
-    # Store everything in session_state so it persists
+    # Store everything in session_state so page doesn't refresh
+    #   when clicked
     # --------------------------------------------------------
     st.session_state["results"] = {
         "metal": metal,
+        "ensemble": ensemble,
         "time_tot": dt * nsteps,
         "num_atoms": positions_traj.shape[1],
         "box": system.box.copy(),
@@ -368,8 +375,9 @@ if "results" in st.session_state:
     with col1:
         st.write("### Run Summary")
         st.write(f"**FCC Metal:** {res['metal']}")
-        st.write(f"**Number of Atoms:** {res['num_atoms']}")
+        st.write(f"**Ensemble:** {res['ensemble']}")
         st.write(f"**Simulation Time:** {res['time_tot']} fs")
+        st.write(f"**Number of Atoms:** {res['num_atoms']}")
         st.write(f"**Coordination Number (FCC ideal ~12):** {res['CN']:.3f}")
         st.write(f"**Mean Temperature:** {res['T_mean']:.3f} K")
         st.write(f"**Mean Pressure:** {res['P_mean']:.5e} eV/Å³")

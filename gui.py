@@ -317,6 +317,17 @@ class MDGUI(tk.Tk):
             rcut = 2.5 * sigma
 
             pos, box = make_fcc_lattice(a, nx, ny, nz)
+            # Center the lattice inside the box
+
+            pos, box = make_fcc_lattice(a, nx, ny, nz)
+
+            # --- Proper centering: move geometric center to the middle of the box ---
+            center_now = np.mean(pos, axis=0)
+            center_target = box / 2.0
+            pos += (center_target - center_now)
+
+
+
             system = System(pos, mass, box, symbol=metal, cutoff=rcut, skin=0.3)
 
             initialize_velocities(system, T_target)
