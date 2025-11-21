@@ -3,56 +3,84 @@
 import numpy as np
 from .forces import lj_forces
 
+# Try to import the C++ extension
+try:
+    from . import md_cpp
+    _HAVE_CPP = True
+except ImportError:
+    _HAVE_CPP = False
+
 
 def velocity_verlet(system, dt, epsilon=1.0, sigma=1.0, rcut=2.5):
     """
     One Velocity–Verlet time integration step using Lennard–Jones forces.
 
-    Updates the System in-place:
-        system.pos
-        system.vel
-        system.force
-        system.potential_energy
-        system.kinetic_energy
+    If the C++ extension md_cpp is available and the mass is scalar,
+    use the fast C++ implementation; otherwise fall back to pure Python.
     """
-    # ---- 1) Compute forces at current positions ----
-    pe = system.compute_forces(
-            lambda pos, box, pairs: lj_forces(pos, box, pairs, epsilon, sigma, rcut)
-        )
-
-    # ---- 2) Half-step velocity update and full-step position update ----    
-    # v(t+dt/2) = v + (dt/2)*(F/m)
-    # r(t+dt) = r + dt*v(t+dt/2)
     m = system.mass
 
+    # Use C++ path when possible
+    if _HAVE_CPP and np.isscalar(m):
+        # Make sure neighbor list exists
+        pairs = system.nl.pairs
+        # Ensure int64 for C++
+        pairs64 = pairs.astype(np.int64, copy=False)
+
+        # Call C++ function: updates pos, vel, force in-place
+        pe_new = md_cpp.velocity_verlet_lj_cpp(
+            system.pos,
+            system.vel,
+            system.force,
+            system.box,
+            pairs64,
+            float(m),
+            float(dt),
+            float(epsilon),
+            float(sigma),
+            float(rcut),
+        )
+
+        system.potential_energy = pe_new
+        system.kinetic_energy()
+        return
+
+    # ----------------------------
+    # Fallback: original Python/Numpy version
+    # ----------------------------
+
+    # 1) Compute forces at current positions
+    pe = system.compute_forces(
+        lambda pos, box, pairs: lj_forces(pos, box, pairs, epsilon, sigma, rcut)
+    )
+
+    # 2) Half-step velocity update and full-step position update
     if np.isscalar(m):
         inv_m = 1.0 / m
-        system.vel += 0.5 * dt * system.force * inv_m      
+        system.vel += 0.5 * dt * system.force * inv_m
         system.pos += dt * system.vel
     else:
         # m is per-particle masses
         system.vel += 0.5 * dt * (system.force / m[:, None])
         system.pos += dt * system.vel
 
-    # ---- 3) Apply periodic boundary conditions ----
+    # 3) Apply periodic boundary conditions
     system.pos %= system.box
 
-    # ---- 4) Recompute forces at new positions ----
+    # 4) Recompute forces at new positions
     pe_new = system.compute_forces(
-            lambda pos, box, pairs: lj_forces(pos, box, pairs, epsilon, sigma, rcut)
-        )
+        lambda pos, box, pairs: lj_forces(pos, box, pairs, epsilon, sigma, rcut)
+    )
     system.potential_energy = pe_new
-    forces_new = system.force
 
-    # ---- 5) Second half-step velocity update ----
-    # v(t+dt) = v(t+dt/2) + (dt/2)*(F/m)
+    # 5) Second half-step velocity update
     if np.isscalar(m):
         inv_m = 1.0 / m
         system.vel += 0.5 * dt * system.force * inv_m
     else:
         system.vel += 0.5 * dt * (system.force / m[:, None])
 
-    # ---- 6) Update kinetic energy ----
+    # 6) Update kinetic energy
     system.kinetic_energy()
 
 
@@ -101,9 +129,7 @@ def simple_rescale_thermostat(system, T_target):
 # ============================================================
 
 def step_nve(system, dt, epsilon=1.0, sigma=1.0, rcut=2.5):
-    """
-    Perform one NVE (microcanonical) MD step.
-    """
+    """Perform one NVE (microcanonical) MD step."""
     velocity_verlet(system, dt, epsilon=epsilon, sigma=sigma, rcut=rcut)
 
 

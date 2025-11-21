@@ -467,13 +467,17 @@ class MDGUI(tk.Tk):
             self.log_threadsafe("Simulation and analysis complete.")
 
         except Exception as e:
-            self.log_threadsafe(f"Error: {e}")
+            # Capture the message BEFORE leaving the except block
+            err_msg = f"{e}"
+            self.log_threadsafe(f"Error: {err_msg}")
 
             def err():
-                messagebox.showerror("Error", f"Simulation failed:\n{e}")
+                # Now we use err_msg, which is safe to capture
+                messagebox.showerror("Error", f"Simulation failed:\n{err_msg}")
                 self.run_button.configure(state="normal")
 
             self.after(0, err)
+
 
     # --------------------------------------------------------
     # Plot helper
