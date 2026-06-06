@@ -1,6 +1,7 @@
 # md/analysis.py
 
 import numpy as np
+from md.integrator import step_nve
 
 # Boltzmann constant in eV/K (same as in system.py)
 kB = 8.617333262145e-5
@@ -413,3 +414,98 @@ def compute_thermal_conductivity_green_kubo(times, corr_Jq, V, T):
     kappa = integral / (kB * T**2 * V)
 
     return kappa, integral
+
+# ---------------------------------------------------------------------
+# 6. Stability analysis 
+# ---------------------------------------------------------------------
+def test_relative_energy_drift(
+        system, dt, n_steps, epsilon, sigma, rcut,sample_every=1):
+    """
+    Run NVE and compute relative total energy drift.
+    """
+
+    times = []
+    energies = []
+
+    system.remove_drift()
+
+    # Make sure forces + PE initialized
+    step_nve(system, 0.0, epsilon=epsilon, sigma=sigma, rcut=rcut)
+
+    KE0 = system.kinetic_energy()
+    PE0 = system.potential_energy
+    E0 = KE0 + PE0
+
+    for step in range(n_steps):
+        step_nve(system, dt, epsilon=epsilon, sigma=sigma, rcut=rcut)
+
+        if step % sample_every == 0:
+            KE = system.kinetic_energy()
+            PE = system.potential_energy
+            E = KE + PE
+
+            times.append(step * dt)
+            energies.append(E)
+
+    times = np.array(times)
+    energies = np.array(energies)
+
+    rel_drift = (energies - E0) / abs(E0)
+
+    # Linear drift slope
+    if len(times) > 1:
+        coeffs = np.polyfit(times, energies, 1)
+        drift_slope = coeffs[0]
+    else:
+        drift_slope = 0.0
+
+    max_abs_rel = np.max(np.abs(rel_drift))
+
+    return {
+        "times": times,
+        "energies": energies,
+        "rel_drift": rel_drift,
+        "drift_slope": drift_slope,
+        "max_abs_rel": max_abs_rel
+    }
+
+def test_grid_refinement(system_builder_fn,
+                             dt,
+                             n_steps,
+                             epsilon,
+                             sigma,
+                             rcut):
+    """
+    Perform timestep refinement study.
+
+    system_builder_fn must return a *fresh System instance*
+    with identical initial conditions each time.
+
+    Returns
+    -------
+    results : dict mapping timestep -> drift metrics
+    """
+
+    results = {}
+
+    for factor in [1, 2, 4]:
+        dt_test = dt / factor
+
+        # Build fresh identical system
+        system = system_builder_fn()
+
+        drift_data = test_relative_energy_drift(
+            system=system,
+            dt=dt_test,
+            n_steps=n_steps,
+            epsilon=epsilon,
+            sigma=sigma,
+            rcut=rcut
+        )
+
+        results[dt_test] = {
+            "max_abs_rel": drift_data["max_abs_rel"],
+            "drift_slope": drift_data["drift_slope"]
+        }
+
+    return results

@@ -16,6 +16,8 @@ from md.analysis import (
     compute_structure_factor,
     compute_diffusion_from_msd,
     compute_diffusion_from_vacf,
+    test_relative_energy_drift,
+    test_grid_refinement
 )
 
 try:

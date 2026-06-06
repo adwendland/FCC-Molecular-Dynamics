@@ -7,6 +7,17 @@ import queue
 import numpy as np
 import matplotlib.pyplot as plt
 
+import matplotlib.pyplot as plt
+
+plt.rcParams.update({
+    "font.size": 14,          # base font size
+    "axes.titlesize": 16,     # plot title
+    "axes.labelsize": 14,     # x/y labels
+    "xtick.labelsize": 13,
+    "ytick.labelsize": 13,
+    "legend.fontsize": 13,
+})
+
 from md.system import System
 from md.constants import get_lattice_constant, get_mass_internal, get_amu, get_sigma, get_eps
 from md.forces import lj_forces
@@ -23,6 +34,8 @@ from md.analysis import (
     compute_structure_factor,
     compute_diffusion_from_msd,
     compute_diffusion_from_vacf,
+    test_grid_refinement,
+    test_relative_energy_drift
 )
 
 kB = 8.617333262145e-5  # eV/K
@@ -128,6 +141,18 @@ class MDGUI(tk.Tk):
         self.dt_var = tk.StringVar(value="0.001")
         ttk.Entry(params_frame, textvariable=self.dt_var, width=8).grid(row=row, column=1, sticky="w")
         row += 1
+        
+        # Stability test steps
+        ttk.Label(params_frame, text="Stability steps (NVE):").grid(row=row, column=0, sticky="w")
+        self.stab_steps_var = tk.StringVar(value="5000")
+        ttk.Entry(params_frame, textvariable=self.stab_steps_var, width=8).grid(row=row, column=1, sticky="w")
+        row += 1
+
+        # Stability sample interval
+        ttk.Label(params_frame, text="Stability sample every:").grid(row=row, column=0, sticky="w")
+        self.stab_sample_var = tk.StringVar(value="10")
+        ttk.Entry(params_frame, textvariable=self.stab_sample_var, width=8).grid(row=row, column=1, sticky="w")
+        row += 1
 
         # Equil steps
         ttk.Label(params_frame, text="Equilibration steps:").grid(row=row, column=0, sticky="w")
@@ -170,6 +195,15 @@ class MDGUI(tk.Tk):
         # Run button
         self.run_button = ttk.Button(params_frame, text="Run simulation", command=self.on_run_clicked)
         self.run_button.grid(row=row, column=0, columnspan=2, pady=(10, 0), sticky="ew")
+
+        row += 1
+
+        self.stability_button = ttk.Button(
+        params_frame,
+        text="Run NVE Stability Test",
+        command=self.on_stability_clicked
+        )
+        self.stability_button.grid(row=row, column=0, columnspan=2, pady=(5, 0), sticky="ew")
 
         # Right column: log output
         log_frame = ttk.LabelFrame(main_frame, text="Log / summary", padding=5)
@@ -250,6 +284,96 @@ class MDGUI(tk.Tk):
             daemon=True,
         )
         self.sim_thread.start()
+    
+    def on_stability_clicked(self):
+        try:
+            p = self._read_params()
+        except ValueError as e:
+            messagebox.showerror("Input error", str(e))
+            return
+
+        self.log("Running NVE energy conservation test...")
+
+        metal = p["metal"]
+        nx = p["nx"]
+        ny = p["ny"]
+        nz = p["nz"]
+        T_target = p["T_target"]
+        dt = p["dt"]
+
+        a = get_lattice_constant(metal)
+        mass = get_mass_internal(metal)
+        epsilon = get_eps(metal)
+        sigma = get_sigma(metal)
+        rcut = 2.5 * sigma
+
+        pos, box = make_fcc_lattice(a, nx, ny, nz)
+
+        # center lattice
+        center_now = np.mean(pos, axis=0)
+        pos += (box/2.0 - center_now)
+
+        system = System(pos, mass, box, symbol=metal, cutoff=rcut, skin=0.3)
+
+        initialize_velocities(system, T_target)
+        system.remove_drift()
+
+        drift_steps = p.get("stab_steps", 5000)
+        drift_sample = p.get("stab_sample", 10)
+
+        drift_data = test_relative_energy_drift(
+            system=system,
+            dt=dt,
+            n_steps=drift_steps,
+            epsilon=epsilon,
+            sigma=sigma,
+            rcut=rcut,
+            sample_every=drift_sample
+        )
+
+        times = drift_data["times"]
+        E = drift_data["energies"]
+        rel = drift_data["rel_drift"]
+
+        E0 = E[0]
+        Emin = float(np.min(E))
+        Emax = float(np.max(E))
+        dE = Emax - Emin
+
+        # "Peak-to-peak" relative fluctuation (good to report)
+        rel_pp = dE / abs(E0)
+
+        # Rough "end minus start" drift (simple)
+        rel_end = float(rel[-1])
+
+        # Print a report
+        self.log("")
+        self.log("=== NVE Energy Conservation Report ===")
+        self.log(f"Metal: {metal}")
+        self.log(f"Lattice: {nx} x {ny} x {nz}  (N = {system.N})")
+        self.log(f"T_init: {T_target:.2f} K")
+        self.log(f"dt: {dt:g} fs")
+        self.log(f"rcut: {rcut:.4f} Å   (sigma={sigma:.4f}, eps={epsilon:.4f} eV)")
+        self.log(f"Steps: {drift_steps}   sample_every: {drift_sample}")
+        self.log("--------------------------------------")
+        self.log(f"E0:   {E0:.8e} eV")
+        self.log(f"Emin: {Emin:.8e} eV")
+        self.log(f"Emax: {Emax:.8e} eV")
+        self.log(f"ΔE (peak-to-peak): {dE:.3e} eV   (ΔE/|E0| = {rel_pp:.3e})")
+        self.log(f"Max |(E-E0)/|E0||: {drift_data['max_abs_rel']:.3e}")
+        self.log(f"End relative drift: {rel_end:.3e}")
+        self.log(f"Linear drift slope dE/dt: {drift_data['drift_slope']:.3e} eV/fs")
+        self.log("======================================")
+        self.log("")
+
+        # Plot drift
+        plt.figure(figsize=(6,4))
+        plt.plot(drift_data["times"], drift_data["rel_drift"])
+        plt.xlabel("Time (fs)")
+        plt.ylabel("Relative Energy Drift")
+        plt.title(f"NVE Energy Drift (dt = {dt:g} fs, {drift_steps} steps)")
+        plt.tight_layout()
+        plt.show()
 
     # --------------------------------------------------------
     # Read parameters from widgets
@@ -265,6 +389,8 @@ class MDGUI(tk.Tk):
             nsteps = int(self.nsteps_var.get())
             sample_interval = int(self.sample_interval_var.get())
             output_interval = int(self.output_interval_var.get())
+            stab_steps = int(self.stab_steps_var.get())
+            stab_sample = int(self.stab_sample_var.get())
         except Exception:
             raise ValueError("Failed to parse one or more numeric parameters.")
 
@@ -276,6 +402,8 @@ class MDGUI(tk.Tk):
             raise ValueError("Steps must be non-negative / positive.")
         if sample_interval <= 0 or output_interval <= 0:
             raise ValueError("Intervals must be positive integers.")
+        if stab_steps <= 0 or stab_sample <= 0:
+            raise ValueError("Stability test steps/sample must be positive.")
 
         return {
             "metal": self.metal_var.get(),
@@ -290,6 +418,8 @@ class MDGUI(tk.Tk):
             "sample_interval": sample_interval,
             "output_interval": output_interval,
             "traj_file": self.traj_var.get(),
+            "stab_steps": stab_steps,
+            "stab_sample": stab_sample,
         }
 
     # --------------------------------------------------------

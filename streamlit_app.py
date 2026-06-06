@@ -22,6 +22,8 @@ from md.analysis import (
     compute_structure_factor,
     compute_diffusion_from_msd,
     compute_diffusion_from_vacf,
+    test_grid_refinement,
+    test_relative_energy_drift
 )
 
 kB = 8.617333262145e-5  # eV/K
