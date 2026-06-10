@@ -219,7 +219,7 @@ def compute_coordination_from_rdf(r, g_r, rho, r_max):
     g_sel = g_r[mask]
 
     integrand = r_sel**2 * g_sel
-    CN = 4.0 * np.pi * rho * np.trapz(integrand, r_sel)
+    CN = 4.0 * np.pi * rho * np.trapezoid(integrand, r_sel)
 
     return CN
 
@@ -262,7 +262,7 @@ def compute_structure_factor(k_values, r, g_r, rho):
             sinc = np.sin(kr) / kr
             integrand = r**2 * gr_minus_1 * sinc
 
-        S_k[i] = 1.0 + 4.0 * np.pi * rho * np.trapz(integrand, r)
+        S_k[i] = 1.0 + 4.0 * np.pi * rho * np.trapezoid(integrand, r)
 
     return k_values, S_k
 
@@ -344,7 +344,7 @@ def compute_diffusion_from_vacf(times, vacf, t_max=None):
         t = t[mask]
         c = c[mask]
 
-    integral = np.trapz(c, t)
+    integral = np.trapezoid(c, t)
     D = integral / 3.0
     return D, integral
 
@@ -379,7 +379,7 @@ def compute_viscosity_green_kubo(times, corr_Pxy, V, T):
     t = np.asarray(times, dtype=float)
     C = np.asarray(corr_Pxy, dtype=float)
 
-    integral = np.trapz(C, t)            # (pressure^2 * time)
+    integral = np.trapezoid(C, t)            # (pressure^2 * time)
     eta = V * integral / (kB * T)        # check unit conversions as needed
 
     return eta, integral
@@ -411,7 +411,7 @@ def compute_thermal_conductivity_green_kubo(times, corr_Jq, V, T):
     t = np.asarray(times, dtype=float)
     C = np.asarray(corr_Jq, dtype=float)
 
-    integral = np.trapz(C, t)
+    integral = np.trapezoid(C, t)
     kappa = integral / (kB * T**2 * V)
 
     return kappa, integral
