@@ -64,7 +64,7 @@ def initialize_velocities(system, T, seed=123):
     v = rng.normal(0.0, 1.0, size=(N, 3)) * std
     v -= v.mean(axis=0)
     system.vel = v
-    system.kinetic_energy()
+    system.update_energies()
 
 
 
@@ -117,7 +117,9 @@ sample_idx = 0
 positions_traj[0]  = system.pos.copy()
 velocities_traj[0] = system.vel.copy()
 pressure_traj[0]   = compute_pressure(system)
-energy_traj[0]     = system.kinetic_energy() + system.potential_energy
+
+system.update_energies()
+energy_traj[0] = system.total_energy
 temp_traj[0]       = system.temperature()
 
 print("# step             KE             PE          E_tot        T")
@@ -144,15 +146,18 @@ for step in range(1, nsteps + 1):
         velocities_traj[sample_idx] = system.vel.copy()
         pressure_traj[sample_idx]   = compute_pressure(system)
 
-        KE = system.kinetic_energy()
+        KE = system.kinetic_energy
         PE = system.potential_energy
-        energy_traj[sample_idx] = KE + PE
+        TE = system.total_energy
+        energy_traj[sample_idx] = TE
         temp_traj[sample_idx]   = system.temperature()
 
     if step % 200 == 0:
-        KE = system.kinetic_energy()
+        system.update_energies()
+        KE = system.kinetic_energy
         PE = system.potential_energy
-        Etot = KE + PE
+        TE = system.total_energy
+        Etot = TE
         T = system.temperature()
         print(f"{step:6d}  {KE: .6e}  {PE: .6e}  {Etot: .6e}  {T: .4f}")
 

@@ -45,7 +45,7 @@ def initialize_velocities(system, T, seed=123):
     v = rng.normal(0.0, 1.0, size=(N, 3)) * std
     v -= v.mean(axis=0)
     system.vel = v
-    system.kinetic_energy()
+    system.update_energies()
 
 
 # ------------------------------------------------------------
@@ -192,7 +192,7 @@ if run_btn:
             pos, box, pairs, epsilon=epsilon, sigma=sigma, rcut=rcut
         )
     )
-    system.potential_energy = pe0
+    system.update_energies()
 
     # --- Equilibration (always NVT Berendsen) ---
     if nsteps_equil > 0:
@@ -223,12 +223,13 @@ if run_btn:
             pos, box, pairs, epsilon=epsilon, sigma=sigma, rcut=rcut
         )
     )
-    system.potential_energy = pe
+    system.update_energies()
 
     positions_traj[0] = system.pos.copy()
     velocities_traj[0] = system.vel.copy()
     pressure_traj[0] = compute_pressure(system)
-    energy_traj[0] = system.kinetic_energy() + system.potential_energy
+    system.update_energies()
+    energy_traj[0] = system.total_energy
     temp_traj[0] = system.temperature()
 
     # write initial frame
@@ -259,13 +260,14 @@ if run_btn:
                     pos, box, pairs, epsilon=epsilon, sigma=sigma, rcut=rcut
                 )
             )
-            system.potential_energy = pe
+            system.update_energies()
 
             sample_idx += 1
             positions_traj[sample_idx] = system.pos.copy()
             velocities_traj[sample_idx] = system.vel.copy()
             pressure_traj[sample_idx] = compute_pressure(system)
-            energy_traj[sample_idx] = system.kinetic_energy() + system.potential_energy
+            system.update_energies()
+            energy_traj[sample_idx] = system.total_energy
             temp_traj[sample_idx] = system.temperature()
 
         if step % max(1, nsteps // 20) == 0:

@@ -153,7 +153,8 @@ def compute_pressure(system):
     Units: eV/Å^3 
     """
     V = system.volume()                    # Å^3
-    K = system.kinetic_energy()            # eV
+    system.update_kinetic_energy()
+    K = system.kinetic_energy          # eV
     virial = np.sum(system.pos * system.force)  # sum_i r_i · F_i, units eV
 
     P = (2.0 * K + virial) / (3.0 * V)     # eV/Å^3
@@ -432,17 +433,15 @@ def test_relative_energy_drift(
     # Make sure forces + PE initialized
     step_nve(system, 0.0, epsilon=epsilon, sigma=sigma, rcut=rcut)
 
-    KE0 = system.kinetic_energy()
-    PE0 = system.potential_energy
-    E0 = KE0 + PE0
+    system.update_energies()
+    E0 = system.total_energy
 
     for step in range(n_steps):
         step_nve(system, dt, epsilon=epsilon, sigma=sigma, rcut=rcut)
 
         if step % sample_every == 0:
-            KE = system.kinetic_energy()
-            PE = system.potential_energy
-            E = KE + PE
+            system.update_energies()
+            E = system.total_energy
 
             times.append(step * dt)
             energies.append(E)

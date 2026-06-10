@@ -24,10 +24,15 @@ class System:
         self.inv_mass = 1.0 / mass
         self.symbol = symbol
 
-        # Initialize ositions, velocities, forces
+        # Initialize positions, velocities, forces
         self.pos = positions.copy()
         self.vel = np.zeros_like(positions)
         self.force = np.zeros_like(positions)
+
+        # Intialize energies
+        self.kinetic_energy = 0.0
+        self.potential_energy = 0.0
+        self.total_energy = 0.0     
 
         # Simulation box
         self.box = np.array(box, dtype=float)
@@ -74,41 +79,45 @@ class System:
         self.nl.update(self.pos)
         pairs = self.nl.pairs
 
-        # Compute forces
-        self.force[:, :] = 0.0
-        force, pe = force_fn(self.pos, self.box, pairs)
-        self.force = force
+        # Update forces
+        forces, potential_energy = force_fn(self.pos, self.box, pairs)
 
-        return pe
+        self.force[:, :] = forces
+        self.potential_energy = float(potential_energy)
+
+        return self.potential_energy
         
     # --- Kinetic energy ---
     # K = (1/2) m v^2   (total KE in eV)
-    def kinetic_energy(self):
+    def update_kinetic_energy(self):
         if np.isscalar(self.mass):
-            m = self.mass
-            ke = 0.5 * m * np.sum(self.vel**2)
+            self.kinetic_energy = 0.5 * self.mass * np.sum(self.vel**2)
         else:
             m = self.mass.reshape(-1, 1)
-            ke = 0.5 * np.sum(m * self.vel**2)
+            self.kinetic_energy = 0.5 * np.sum(m * self.vel**2)
 
-        self.ke = ke
-        return ke
+        return self.kinetic_energy
+
+    def update_energies(self):
+        self.kinetic_energy =  0.5 * self.mass * np.sum(self.vel**2)
+        self.total_energy = self.kinetic_energy + self.potential_energy
+
 
     # --- Temperature ---
     # KE = (dof/2) * k_B * T,  dof = 3N - 3
     def temperature(self):
+        """Return instantaneous temperature in K."""
         dof = 3 * self.N - 3
         if dof <= 0:
             return 0.0
 
-        KE = self.kinetic_energy()   # ensure KE is up to date
-        T = (2.0 * KE) / (dof * kB)  # T in K
-        return T
+        KE = self.update_kinetic_energy()
+        return (2.0 * KE) / (dof * kB)
 
     # --- Momentum removal ---
     # Removes net drift if developed accidentally
     def remove_drift(self):
-        """Remove center of mass drift and update KE."""
+        """Remove center of mass drift and update kinetic/total energy."""
         vcm = np.mean(self.vel, axis=0)
         self.vel -= vcm
-        self.kinetic_energy()
+        self.update_energies()

@@ -11,8 +11,6 @@ except ImportError:
     _HAVE_CPP = False
 
 #_HAVE_CPP = False
-
-
 def velocity_verlet(system, dt, epsilon=1.0, sigma=1.0, rcut=2.5):
     """
     One Velocity–Verlet time integration step using Lennard–Jones forces.
@@ -49,8 +47,8 @@ def velocity_verlet(system, dt, epsilon=1.0, sigma=1.0, rcut=2.5):
             float(rcut),
         )
 
-        system.potential_energy = pe_new
-        system.kinetic_energy()
+        system.potential_energy = float(pe_new)
+        system.update_energies()
         return
     
     # ----------------------------
@@ -81,10 +79,9 @@ def _velocity_verlet_python(system, dt, epsilon, sigma, rcut):
     system.pos %= system.box
 
     # 4) Recompute forces at new positions
-    pe_new = system.compute_forces(
+    system.compute_forces(
         lambda pos, box, pairs: lj_forces(pos, box, pairs, epsilon, sigma, rcut)
-    )
-    system.potential_energy = pe_new
+    )   
 
     # 5) Second half-step velocity update
     if np.isscalar(m):
@@ -94,7 +91,7 @@ def _velocity_verlet_python(system, dt, epsilon, sigma, rcut):
         system.vel += 0.5 * dt * (system.force / m[:, None])
 
     # 6) Update kinetic energy
-    system.kinetic_energy()
+    system.update_energies()
 
     
 
@@ -121,7 +118,7 @@ def berendsen_thermostat(system, T_target, tau_T, dt):
 
     lam = np.sqrt(lam2)
     system.vel *= lam
-    system.kinetic_energy()
+    system.update_energies()
 
 
 def simple_rescale_thermostat(system, T_target):
@@ -136,7 +133,7 @@ def simple_rescale_thermostat(system, T_target):
 
     lam = np.sqrt(T_target / T_inst)
     system.vel *= lam
-    system.kinetic_energy()
+    system.update_energies()
 
 
 # ============================================================

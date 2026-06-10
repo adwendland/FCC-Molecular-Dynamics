@@ -54,7 +54,7 @@ def initialize_velocities(system, T, seed=123):
     v = rng.normal(0.0, 1.0, size=(N, 3)) * std
     v -= v.mean(axis=0)
     system.vel = v
-    system.kinetic_energy()
+    system.update_energies()
 
 
 class MDGUI(tk.Tk):
@@ -456,8 +456,6 @@ class MDGUI(tk.Tk):
             center_target = box / 2.0
             pos += (center_target - center_now)
 
-
-
             system = System(pos, mass, box, symbol=metal, cutoff=rcut, skin=0.3)
 
             initialize_velocities(system, T_target)
@@ -467,7 +465,7 @@ class MDGUI(tk.Tk):
                 lambda pos, box, pairs: lj_forces(pos, box, pairs,
                                                   epsilon=epsilon, sigma=sigma, rcut=rcut)
             )
-            system.potential_energy = pe0
+            system.update_energies()
 
             # Equilibration
             if ensemble.startswith("NVT"):
@@ -497,9 +495,8 @@ class MDGUI(tk.Tk):
             positions_traj[0] = system.pos.copy()
             velocities_traj[0] = system.vel.copy()
             pressure_traj[0] = compute_pressure(system)
-            KE0 = system.kinetic_energy()
-            PE0 = system.potential_energy
-            energy_traj[0] = KE0 + PE0
+            system.update_energies()
+            energy_traj[0] = system.total_energy
             temp_traj[0] = system.temperature()
 
             self.log_threadsafe("Starting production run...")
@@ -523,15 +520,15 @@ class MDGUI(tk.Tk):
                     velocities_traj[sample_idx] = system.vel.copy()
                     pressure_traj[sample_idx] = compute_pressure(system)
 
-                    KE = system.kinetic_energy()
-                    PE = system.potential_energy
-                    energy_traj[sample_idx] = KE + PE
+                    system.update_energies()
+                    energy_traj[sample_idx] = system.total_energy
                     temp_traj[sample_idx] = system.temperature()
 
                 if step % max(1, nsteps // 10) == 0:
-                    KE = system.kinetic_energy()
+                    system.update_energies()
+                    KE = system.kinetic_energy
                     PE = system.potential_energy
-                    Etot = KE + PE
+                    Etot = system.total_energy
                     Tcur = system.temperature()
                     self.log_threadsafe(
                         f"{step:6d}  {KE: .6e}  {PE: .6e}  {Etot: .6e}  {Tcur: .4f}"
