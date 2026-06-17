@@ -18,12 +18,14 @@ from md.analysis import (
     compute_vacf,
     compute_pressure,
     compute_heat_capacity_from_energy,
-    compute_coordination_from_rdf,
+    compute_coordination_number,
     compute_structure_factor,
     compute_diffusion_from_msd,
     compute_diffusion_from_vacf,
-    test_grid_refinement,
-    test_relative_energy_drift
+)
+from md.validation import (
+    test_timestep_refinement,
+    test_relative_energy_drift,
 )
 
 kB = 8.617333262145e-5  # eV/K
@@ -176,10 +178,15 @@ if run_btn:
             dtype=float,
         )
 
-    # Proper centering
+    thermal_displacement = 0.01
+    rng = np.random.default_rng(123)
+    pos += thermal_displacement * a * rng.normal(size=pos.shape)
+    pos %= box
+
     center_now = np.mean(pos, axis=0)
     center_target = box / 2.0
-    pos += (center_target - center_now) 
+    pos += (center_target - center_now)
+    pos %= box
 
     system = System(pos, mass, box, symbol=metal, cutoff=rcut, skin=0.3)
 
@@ -311,7 +318,7 @@ if run_btn:
     idx_peak = np.argmax(g_r)
     idx_min = idx_peak + np.argmin(g_r[idx_peak:])
     r_cn = r[idx_min]
-    CN = compute_coordination_from_rdf(r, g_r, rho, r_cn)
+    CN = compute_coordination_number(r, g_r, rho, r_cn)
 
     # Heat capacity
     E_tail = energy_traj[len(energy_traj) // 2 :]

@@ -12,12 +12,14 @@ from md.analysis import (
     compute_vacf,
     compute_pressure,
     compute_heat_capacity_from_energy,
-    compute_coordination_from_rdf,
+    compute_coordination_number,
     compute_structure_factor,
     compute_diffusion_from_msd,
     compute_diffusion_from_vacf,
+)
+from md.validation import (
     test_relative_energy_drift,
-    test_grid_refinement
+    test_grid_refinement,
 )
 
 try:
@@ -31,17 +33,17 @@ except ImportError:
 # -----------------------------
 # Simulation Inputs
 # -----------------------------
-metal = "Ni"    # Choose Ag, Al, Au, Cu, Ni, Pb, Pd, Pt
+metal = "Pt"    # Choose Ag, Al, Au, Cu, Ni, Pb, Pd, Pt
 ensemble = "nve"    # Choose nve/nvt
-nx = ny = nz = 3    # Num cells in x/y/z direction
-T_target = 1200.0    # Target temp.
+nx = ny = nz = 4    # Num cells in x/y/z direction
+T_target = 2000.0    # Target temp. in K
 
-dt = 0.001  # time step
-nsteps_equil = 2000 # num equil steps
-nsteps = 10000   # num prod steps
+dt = 0.01  # time step
+nsteps_equil = 200000 # num equil steps
+nsteps = 500000   # num prod steps
 
-sample_interval = 10    # num steps until sample
-output_interval = 20   # num steps until .xyz write
+sample_interval = 100    # num steps until sample
+output_interval = 10000   # num steps until .xyz write
 traj_file = "traj.xyz"  # .xyz file name
 
 
@@ -79,10 +81,16 @@ sigma   = get_sigma(metal)
 rcut    = 2.5 * sigma
 
 pos, box = make_fcc_lattice(a, nx, ny, nz)
-# --- Proper centering: move geometric center to the middle of the box ---
+
+thermal_displacement = 0.01
+rng = np.random.default_rng(123)
+pos += thermal_displacement * a * rng.normal(size=pos.shape)
+pos %= box
+
 center_now = np.mean(pos, axis=0)
 center_target = box / 2.0
 pos += (center_target - center_now)
+pos %= box
 
 system = System(pos, mass, box, symbol=metal, cutoff=rcut, skin=0.3)
 
@@ -202,7 +210,7 @@ rho = system.N / system.volume()
 idx_peak = np.argmax(g_r)
 idx_min = idx_peak + np.argmin(g_r[idx_peak:])
 r_cn = r[idx_min]
-CN = compute_coordination_from_rdf(r, g_r, rho, r_cn)
+CN = compute_coordination_number(r, g_r, rho, r_cn)
 
 # ---------- Heat capacity ----------
 E_tail = energy_traj[len(energy_traj)//2:]

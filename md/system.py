@@ -1,5 +1,6 @@
 # md/system.py
 import numpy as np
+import copy
 from md.neighborlist import NeighborList
 
 kB = 8.617333262145e-5  # eV/K
@@ -49,6 +50,9 @@ class System:
 
         # Track when to rebuild
         self.displacement = np.zeros(self.N)
+
+    def copy(self):
+        return copy.deepcopy(self)
 
     # --- Boundary conditions ---
     def apply_pbc(self):
