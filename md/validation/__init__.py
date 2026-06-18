@@ -21,6 +21,7 @@ from .structure import (
 from .validation_driver import (
     run_validation_suite,
     print_validation_report,
+    save_validation_data,
 )
 
 __all__ = [
@@ -33,4 +34,5 @@ __all__ = [
     "test_coordination_number",
     "run_validation_suite",
     "print_validation_report",
+    "save_validation_data",
 ]

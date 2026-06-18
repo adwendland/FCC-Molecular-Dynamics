@@ -1,4 +1,9 @@
 import time
+import json
+import io
+from contextlib import redirect_stdout
+from pathlib import Path
+
 import numpy as np
 
 from md.constants import get_lattice_constant, get_sigma, get_eps, get_mass_internal
@@ -55,6 +60,7 @@ def run_validation_suite(
     refinement_dt=0.01,
     refinement_steps=1000,
     tests=None,
+    save_outputs=False,
 ):
     start_time = time.perf_counter()
 
@@ -125,6 +131,7 @@ def run_validation_suite(
     # Energy drift
     # -------------------------
     if "energy_drift" in tests:
+        print("Testing energy drift...")
         results["energy_drift"] = test_relative_energy_drift(
             system.copy(),
             dt=dt,
@@ -156,6 +163,7 @@ def run_validation_suite(
     # Timestep refinement
     # -------------------------
     if "timestep_refinement" in tests:
+        print("Testing timestep refinement...")
         results["timestep_refinement"] = test_timestep_refinement(
             system_builder_fn=system.copy,
             dt=refinement_dt,
@@ -177,6 +185,7 @@ def run_validation_suite(
     # Momentum conservation
     # -------------------------
     if "momentum" in tests:
+        print("Testing momentum conservation...")
         results["momentum"] = test_momentum_conservation(
             system.copy(),
             dt=dt,
@@ -194,6 +203,7 @@ def run_validation_suite(
     # Temperature stability
     # -------------------------
     if "temperature_stability" in tests:
+        print("Testing temperature stability...")
         results["temperature_stability"] = test_temperature_stability(
             system.copy(),
             dt=dt,
@@ -217,6 +227,7 @@ def run_validation_suite(
     # Equipartition
     # -------------------------
     if "equipartition" in tests:
+        print("Testing equipartition...")
         results["equipartition"] = test_equipartition(
             system.copy(),
             dt=dt,
@@ -242,6 +253,7 @@ def run_validation_suite(
     positions_traj = np.array([system.pos.copy()])
 
     if "rdf_peaks" in tests:
+        print("Testing first RDF peak...")
         results["rdf_peaks"] = test_fcc_rdf_peaks(
             positions_traj=positions_traj,
             box=box,
@@ -274,6 +286,7 @@ def run_validation_suite(
         )
 
     if "coordination_number" in tests:
+        print("Testing coordination number...")
         results["coordination_number"] = test_coordination_number(
             positions_traj=positions_traj,
             box=box,
@@ -290,6 +303,12 @@ def run_validation_suite(
     results["summary"] = summary
     results["runtime_seconds"] = time.perf_counter() - start_time
     results["simulation_time_fs"] = n_steps * dt
+
+    if save_outputs:
+        saved_files = save_validation_data(results)
+        results["saved_files"] = saved_files
+    else:
+        results["saved_files"] = {}
 
     return results
 
@@ -426,3 +445,91 @@ def print_validation_report(results):
     print(f"Validation Status: {_status(overall_pass)}")
     print("=" * 58)
     print()
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+
+def _resolve_output_root(output_root, default_subdir):
+    if output_root is None:
+        return PROJECT_ROOT / "outputs" / default_subdir
+
+    output_root = Path(output_root)
+    if output_root.is_absolute():
+        return output_root
+
+    return PROJECT_ROOT / output_root
+
+
+def make_validation_output_dir(results, output_root=None, run_name=None):
+    meta = results["metadata"]
+
+    if run_name is None:
+        run_name = (
+            f"{meta['metal']}_validation_"
+            f"{int(meta['T0'])}K_{meta['nx']}x{meta['ny']}x{meta['nz']}"
+        )
+
+    output_dir = _resolve_output_root(output_root, "validation") / run_name
+    output_dir.mkdir(parents=True, exist_ok=True)
+    return output_dir
+
+
+def _json_safe(obj):
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    if isinstance(obj, np.generic):
+        return obj.item()
+    if isinstance(obj, Path):
+        return str(obj)
+    raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
+
+
+def save_validation_data(results, output_root=None, run_name=None):
+    output_dir = make_validation_output_dir(
+        results,
+        output_root=output_root,
+        run_name=run_name,
+    )
+
+    saved = {}
+
+    report_path = output_dir / "validation_report.txt"
+    buffer = io.StringIO()
+    with redirect_stdout(buffer):
+        print_validation_report(results)
+    report_path.write_text(buffer.getvalue(), encoding="utf-8")
+    saved["report"] = report_path
+
+    json_path = output_dir / "validation_results.json"
+    with open(json_path, "w", encoding="utf-8") as f:
+        json.dump(results, f, indent=4, default=_json_safe)
+    saved["json"] = json_path
+
+    if "energy_drift" in results:
+        e = results["energy_drift"]
+        energies = None
+        for key in ["total_energy", "total_energies", "energies", "E_total"]:
+            if key in e:
+                energies = np.asarray(e[key])
+                break
+
+        if energies is not None:
+            path = output_dir / "energy_drift.dat"
+            np.savetxt(
+                path,
+                np.column_stack((np.arange(len(energies)), energies)),
+                header="sample_index total_energy_eV",
+            )
+            saved["energy_drift"] = path
+
+    if "timestep_refinement" in results:
+        r = results["timestep_refinement"]
+        path = output_dir / "timestep_refinement.dat"
+        rows = [
+            (float(dt), float(err))
+            for dt, err in sorted(r["errors"].items(), reverse=True)
+        ]
+        np.savetxt(path, np.asarray(rows), header="dt_fs position_error")
+        saved["timestep_refinement"] = path
+
+    return saved

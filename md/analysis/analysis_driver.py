@@ -1,4 +1,9 @@
 import time
+import json
+import io
+from contextlib import redirect_stdout
+from pathlib import Path
+
 import numpy as np
 
 from md.constants import get_lattice_constant, get_sigma, get_eps, get_mass_internal
@@ -201,6 +206,7 @@ def run_analysis_suite(
     n_k=300,
     xyz_file=None,
     xyz_every=None,
+    save_outputs=False,
 ):
     start_time = time.perf_counter()
 
@@ -392,34 +398,153 @@ def run_analysis_suite(
 
     results["runtime_seconds"] = time.perf_counter() - start_time
     results["simulation_time_fs"] = n_steps * dt
+
+    if save_outputs:
+        saved_files = save_analysis_data(results)
+        results["saved_files"] = saved_files
+    else:
+        results["saved_files"] = {}
+
     return results
 
 
-def save_analysis_data(results, prefix="analysis"):
-    saved = []
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+
+def _resolve_output_root(output_root, default_subdir):
+    if output_root is None:
+        return PROJECT_ROOT / "outputs" / default_subdir
+
+    output_root = Path(output_root)
+    if output_root.is_absolute():
+        return output_root
+
+    return PROJECT_ROOT / output_root
+
+
+def make_analysis_output_dir(results, output_root=None, run_name=None):
+    meta = results["metadata"]
+
+    if run_name is None:
+        run_name = (
+            f"{meta['metal']}_{meta['ensemble']}_"
+            f"{int(meta['T0'])}K_{meta['nx']}x{meta['ny']}x{meta['nz']}"
+        )
+
+    output_dir = _resolve_output_root(output_root, "analysis") / run_name
+    output_dir.mkdir(parents=True, exist_ok=True)
+    return output_dir
+
+
+def _json_safe(obj):
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    if isinstance(obj, np.generic):
+        return obj.item()
+    if isinstance(obj, Path):
+        return str(obj)
+    raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
+
+
+def save_analysis_data(
+    results,
+    output_root=None,
+    run_name=None,
+    save_trajectory=False,
+):
+    output_dir = make_analysis_output_dir(
+        results,
+        output_root=output_root,
+        run_name=run_name,
+    )
+
+    saved = {}
+
+    if "thermo" in results:
+        traj = results["trajectory"]
+        path = output_dir / "thermo.dat"
+        np.savetxt(
+            path,
+            np.column_stack((
+                traj["time_traj"],
+                traj["temp_traj"],
+                traj["pressure_traj"],
+                traj["energy_traj"],
+            )),
+            header="time_fs temperature_K pressure_eV_per_A3 total_energy_eV",
+        )
+        saved["thermo"] = path
 
     if "rdf" in results:
-        filename = f"{prefix}_rdf.dat"
-        np.savetxt(filename, np.column_stack((results["rdf"]["r"], results["rdf"]["g_r"])))
-        saved.append(filename)
+        path = output_dir / "rdf.dat"
+        np.savetxt(
+            path,
+            np.column_stack((results["rdf"]["r"], results["rdf"]["g_r"])),
+            header="r_A g_r",
+        )
+        saved["rdf"] = path
 
     if "msd" in results:
-        filename = f"{prefix}_msd.dat"
-        np.savetxt(filename, np.column_stack((results["msd"]["time"], results["msd"]["msd"])))
-        saved.append(filename)
+        path = output_dir / "msd.dat"
+        np.savetxt(
+            path,
+            np.column_stack((results["msd"]["time"], results["msd"]["msd"])),
+            header="time_fs msd_A2",
+        )
+        saved["msd"] = path
 
     if "vacf" in results:
-        filename = f"{prefix}_vacf.dat"
-        np.savetxt(filename, np.column_stack((results["vacf"]["time"], results["vacf"]["vacf"])))
-        saved.append(filename)
+        path = output_dir / "vacf.dat"
+        np.savetxt(
+            path,
+            np.column_stack((results["vacf"]["time"], results["vacf"]["vacf"])),
+            header="time_fs vacf",
+        )
+        saved["vacf"] = path
 
     if "structure_factor" in results:
-        filename = f"{prefix}_structure_factor.dat"
+        path = output_dir / "structure_factor.dat"
         np.savetxt(
-            filename,
-            np.column_stack((results["structure_factor"]["k"], results["structure_factor"]["S_k"])),
+            path,
+            np.column_stack((
+                results["structure_factor"]["k"],
+                results["structure_factor"]["S_k"],
+            )),
+            header="k_1_per_A S_k",
         )
-        saved.append(filename)
+        saved["structure_factor"] = path
+
+    summary_path = output_dir / "analysis_summary.json"
+    with open(summary_path, "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                "metadata": results.get("metadata", {}),
+                "summary": results.get("summary", {}),
+                "thermo": results.get("thermo", {}),
+                "coordination_number": results.get("coordination_number", {}),
+                "heat_capacity": results.get("heat_capacity", {}),
+                "diffusion_msd": results.get("diffusion_msd", {}),
+                "diffusion_vacf": results.get("diffusion_vacf", {}),
+                "runtime_seconds": results.get("runtime_seconds"),
+                "simulation_time_fs": results.get("simulation_time_fs"),
+            },
+            f,
+            indent=4,
+            default=_json_safe,
+        )
+    saved["summary_json"] = summary_path
+
+    report_path = output_dir / "analysis_report.txt"
+    buffer = io.StringIO()
+    with redirect_stdout(buffer):
+        print_analysis_report(results)
+    report_path.write_text(buffer.getvalue(), encoding="utf-8")
+    saved["report"] = report_path
+
+    if save_trajectory and "trajectory" in results:
+        path = output_dir / "trajectory.npz"
+        np.savez_compressed(path, **results["trajectory"])
+        saved["trajectory"] = path
 
     return saved
 
