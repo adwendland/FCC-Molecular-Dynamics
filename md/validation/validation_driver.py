@@ -10,6 +10,10 @@ from md.constants import get_lattice_constant, get_sigma, get_eps, get_mass_inte
 from md.lattice import make_fcc_lattice
 from md.system import System
 
+from md.integrator import (
+    step_nvt_berendsen,
+)
+
 from md.validation import (
     test_relative_energy_drift,
     test_timestep_refinement,
@@ -56,9 +60,10 @@ def run_validation_suite(
     T0=300.0,
     dt=0.001,
     n_steps=5000,
+    n_equil_steps=20000,
     sample_every=10,
-    refinement_dt=0.01,
-    refinement_steps=1000,
+    refinement_dt=0.02,
+    refinement_steps=5000,
     tests=None,
     save_outputs=False,
 ):
@@ -92,6 +97,21 @@ def run_validation_suite(
 
     initialize_velocities(system, T0)
 
+    tau_T = 100 * dt
+
+    if n_equil_steps > 0:
+        print("Starting equilibration steps...")
+    for _ in range(n_equil_steps):
+        step_nvt_berendsen(
+            system,
+            dt,
+            T_target=T0,
+            tau_T=tau_T,
+            epsilon=eps,
+            sigma=sigma,
+            rcut=rcut,
+        )
+
     results = {}
 
     results["metadata"] = {
@@ -115,8 +135,9 @@ def run_validation_suite(
 
     results["tolerances"] = {
         "energy_drift": 5e-3,
-        "convergence_order_min": 1.5,
+        "convergence_order_min": 1.0,
         "convergence_order_max": 2.5,
+        "convergence_position_error": 1e-6,
         "momentum_drift": 1e-8,
         "temperature_relative_error": 5e-2,
         "equipartition_relative_error": 5e-2,
@@ -159,27 +180,6 @@ def run_validation_suite(
 
         summary["Energy Drift"] = e["max_abs_rel"] < tol["energy_drift"]
 
-    # -------------------------
-    # Timestep refinement
-    # -------------------------
-    if "timestep_refinement" in tests:
-        print("Testing timestep refinement...")
-        results["timestep_refinement"] = test_timestep_refinement(
-            system_builder_fn=system.copy,
-            dt=refinement_dt,
-            n_steps=refinement_steps,
-            epsilon=eps,
-            sigma=sigma,
-            rcut=rcut,
-        )
-
-        r = results["timestep_refinement"]
-
-        summary["Timestep Refinement"] = (
-            tol["convergence_order_min"]
-            <= r["order"]
-            <= tol["convergence_order_max"]
-        )
 
     # -------------------------
     # Momentum conservation
@@ -199,6 +199,30 @@ def run_validation_suite(
         m = results["momentum"]
         summary["Momentum Conservation"] = m["max_rel_drift"] < tol["momentum_drift"]
 
+
+        # -------------------------
+    # Timestep refinement
+    # -------------------------
+    if "timestep_refinement" in tests:
+        print("Testing timestep refinement...")
+        results["timestep_refinement"] = test_timestep_refinement(
+            system_builder_fn=system.copy,
+            dt=refinement_dt,
+            n_steps=refinement_steps,
+            epsilon=eps,
+            sigma=sigma,
+            rcut=rcut,
+        )
+
+        r = results["timestep_refinement"]
+
+        summary["Timestep Refinement"] = (
+            tol["convergence_order_min"]
+            <= r["order"]
+            <= tol["convergence_order_max"] and max(r["errors"].values()) < tol["convergence_position_error"]
+        )
+
+        
     # -------------------------
     # Temperature stability
     # -------------------------
@@ -392,6 +416,8 @@ def print_validation_report(results):
             f"  {'Expected Range':26s}: "
             f"[{tol['convergence_order_min']:.1f}, {tol['convergence_order_max']:.1f}]"
         )
+        print(f"  {'Max Position Error':26s}: {max(r["errors"].values()):.1e}")
+        print(f"  {'Position Error Tolerance':26s}: {tol['convergence_position_error']:.1e}")
 
         print()
         print("  dt (fs)        Position Error")

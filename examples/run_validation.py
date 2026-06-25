@@ -28,9 +28,11 @@ def main():
         nx=4,
         ny=4,
         nz=4,
-        T0=300.0,
-        dt=0.5,
+        T0=4000.0,
+        dt=0.1,
         n_steps=100000,
+        refinement_steps=1000,
+        refinement_dt=0.02,
         sample_every=10,
         tests=None,  # None means run all validation tests
         # tests=["energy_drift", "timestep_refinement"],
