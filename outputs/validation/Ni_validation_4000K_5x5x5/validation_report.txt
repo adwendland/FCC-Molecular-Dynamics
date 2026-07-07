@@ -1,0 +1,89 @@
+
+==========================================================
+FCC Molecular Dynamics Validation Report
+==========================================================
+
+System
+----------------------------------------------------------
+Metal                       : Ni
+Lattice size                : 5 x 5 x 5
+Atoms                       : 500
+Target temperature          : 4000.00 K
+Time step                   : 0.1000 fs
+Simulation time             : 10000.0000 fs (10.0000 ps)
+Wall runtime                : 155.88 min
+Simulation steps            : 100000
+Lattice constant            : 3.520000 Å
+Cutoff radius               : 5.683934 Å
+
+Conservation Tests
+----------------------------------------------------------
+Energy Drift                : PASS
+  Initial Energy            : -4.980349e+02 eV
+  Final Energy              : -4.977578e+02 eV
+  Max Relative Drift        : 1.309e-03
+  Tolerance                 : 5.000e-03
+
+Momentum Conservation       : PASS
+  Max Normalized Drift      : 1.595e-15
+  Tolerance                 : 1.000e-08
+
+Numerical Convergence Tests
+----------------------------------------------------------
+Timestep Refinement         : PASS
+  Refinement dt             : 0.0400 fs
+  Refinement steps          : 500
+  Observed Order            : 1.2152
+  Expected Range            : [1.0, 2.5]
+  Max Position Error        : 2.2e-07
+  Position Error Tolerance  : 1.0e-06
+
+  dt (fs)        Position Error
+  ------------------------------
+      0.0400         2.156e-07
+      0.0200         9.295e-08
+      0.0100         4.000e-08
+  Reference dt  : 0.0050 fs
+
+Thermodynamic Tests
+----------------------------------------------------------
+Temperature Stability       : PASS
+  Mean Temperature          : 4004.0677 K
+  Relative Error            : 1.017e-03
+  Tolerance                 : 5.000e-02
+
+Total Kinetic Energy        : PASS
+  Mean Kinetic Energy       : 2.582653e+02 eV
+  Expected Kinetic Energy   : 2.587829e+02 eV
+  Relative Error            : 2.000e-03
+  Tolerance                 : 5.000e-02
+
+Component Equipartition     : PASS
+  Mean Kx                   : 8.573219e+01 eV
+  Mean Ky                   : 8.570349e+01 eV
+  Mean Kz                   : 8.682965e+01 eV
+  Expected Component KE     : 8.626097e+01 eV
+  Max Relative Error        : 6.593e-03
+  Tolerance                 : 5.000e-02
+
+Structural Tests
+----------------------------------------------------------
+Coordination Number         : PASS
+  Measured CN               : 11.8800
+  Expected CN               : 12
+  Relative Error            : 1.000e-02
+  Tolerance                 : 5.000e-02
+
+RDF First Peak              : PASS
+  Measured                  : 2.4354 Å
+  Expected                  : 2.4890 Å
+  Relative Error            : 2.154e-02
+  Tolerance                 : 5.000e-02
+
+Overall Result
+----------------------------------------------------------
+8 / 8 tests passed
+
+Validation Status: PASS
+==========================================================
+

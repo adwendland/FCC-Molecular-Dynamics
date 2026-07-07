@@ -1,0 +1,71 @@
+{
+    "metadata": {
+        "metal": "Ni",
+        "nx": 5,
+        "ny": 5,
+        "nz": 5,
+        "N": 500,
+        "T0": 12000.0,
+        "ensemble": "nve",
+        "dt": 0.1,
+        "n_equil_steps": 20000,
+        "n_steps": 100000,
+        "time_ps": 10.0,
+        "sample_every": 500,
+        "n_samples": 201,
+        "lattice_constant": 3.52,
+        "sigma": 2.273573528694146,
+        "epsilon": 0.24500724975000002,
+        "rcut": 5.683933821735366,
+        "analyses_requested": [
+            "coordination_number",
+            "diffusion_msd",
+            "diffusion_vacf",
+            "heat_capacity",
+            "msd",
+            "rdf",
+            "structure_factor",
+            "thermo",
+            "vacf"
+        ]
+    },
+    "summary": {
+        "mean_temperature": 12014.169243366017,
+        "std_temperature": 270.173051791919,
+        "mean_pressure": 0.0941429769590542,
+        "std_pressure": 0.06379826956213004,
+        "mean_total_energy": 570.9308652328962,
+        "std_total_energy": 0.15580565659449666,
+        "D_msd": 0.0004973960712382735,
+        "D_vacf": 0.005093361936361705,
+        "coordination_number": 12.504796019900498,
+        "Cv": 1.9516685382910425e-06
+    },
+    "thermo": {
+        "mean_temperature": 12014.169243366017,
+        "std_temperature": 270.173051791919,
+        "mean_pressure": 0.0941429769590542,
+        "std_pressure": 0.06379826956213004,
+        "mean_total_energy": 570.9308652328962,
+        "std_total_energy": 0.15580565659449666
+    },
+    "coordination_number": {
+        "coordination_number": 12.504796019900498,
+        "r_cut_cn": 3.2274000000000003,
+        "expected_fcc": 12.0
+    },
+    "heat_capacity": {
+        "Cv": 1.9516685382910425e-06,
+        "T_mean": 12014.169243366017
+    },
+    "diffusion_msd": {
+        "D": 0.0004973960712382735,
+        "slope": 0.002984376427429641
+    },
+    "diffusion_vacf": {
+        "D": 0.005093361936361705,
+        "integral": 0.015280085809085117
+    },
+    "runtime_seconds": 2043.775940200314,
+    "simulation_time_fs": 10000.0
+}

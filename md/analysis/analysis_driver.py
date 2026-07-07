@@ -1,8 +1,11 @@
+# analysis_driver.py
+
 import time
 import json
 import io
 from contextlib import redirect_stdout
 from pathlib import Path
+import matplotlib.pyplot as plt
 
 import numpy as np
 
@@ -11,33 +14,22 @@ from md.lattice import make_fcc_lattice
 from md.system import System
 from md.integrator import step_nve, step_nvt_berendsen
 from md.utils import write_xyz
-
-from .rdf import (
-    compute_rdf,
-    compute_coordination_number,
+from md.plotting import (
+    plot_temperature,
+    plot_energy,
+    plot_msd,
+    plot_rdf,
+    plot_structure_factor,
+    plot_vacf,
 )
 
-from .structure_factor import (
-    compute_structure_factor,
-)
+from .rdf import compute_rdf, compute_coordination_number
+from .structure_factor import compute_structure_factor
+from .msd import compute_msd
+from .vacf import compute_vacf
+from .transport import compute_diffusion_from_msd, compute_diffusion_from_vacf
+from .thermodynamics import compute_pressure, compute_heat_capacity_from_energy
 
-from .msd import (
-    compute_msd,
-)
-
-from .vacf import (
-    compute_vacf
-)
-
-from .transport import (
-    compute_diffusion_from_msd,
-    compute_diffusion_from_vacf,
-)
-
-from .thermodynamics import (
-    compute_pressure,
-    compute_heat_capacity_from_energy,
-)
 
 AVAILABLE_ANALYSES = {
     "thermo",
@@ -52,6 +44,7 @@ AVAILABLE_ANALYSES = {
 }
 
 kB = 8.617333262145e-5
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 def initialize_velocities(system, T, seed=123):
@@ -91,11 +84,6 @@ def build_system(
         positions += thermal_displacement * a * rng.normal(size=positions.shape)
         positions %= box
 
-        center_now = np.mean(positions, axis=0)
-        center_target = box / 2.0
-        positions += center_target - center_now
-        positions %= box
-
     system = System(
         positions,
         mass,
@@ -127,19 +115,26 @@ def run_simulation(
         raise ValueError("ensemble must be 'nve' or 'nvt'")
 
     n_samples = n_steps // sample_every + 1
+
     positions_traj = np.zeros((n_samples, system.N, 3))
     velocities_traj = np.zeros((n_samples, system.N, 3))
     pressure_traj = np.zeros(n_samples)
+    kinetic_traj = np.zeros(n_samples)
+    potential_traj = np.zeros(n_samples)
     energy_traj = np.zeros(n_samples)
     temp_traj = np.zeros(n_samples)
     step_traj = np.zeros(n_samples, dtype=int)
 
     system.update_energies()
+
     positions_traj[0] = system.pos.copy()
     velocities_traj[0] = system.vel.copy()
     pressure_traj[0] = compute_pressure(system)
+    kinetic_traj[0] = system.kinetic_energy
+    potential_traj[0] = system.potential_energy
     energy_traj[0] = system.total_energy
     temp_traj[0] = system.temperature()
+    step_traj[0] = 0
 
     if xyz_file is not None:
         write_xyz(system, step=0, filename=xyz_file)
@@ -170,19 +165,152 @@ def run_simulation(
             positions_traj[sample_idx] = system.pos.copy()
             velocities_traj[sample_idx] = system.vel.copy()
             pressure_traj[sample_idx] = compute_pressure(system)
+            kinetic_traj[sample_idx] = system.kinetic_energy
+            potential_traj[sample_idx] = system.potential_energy
             energy_traj[sample_idx] = system.total_energy
             temp_traj[sample_idx] = system.temperature()
             step_traj[sample_idx] = step
+
+    step_traj = step_traj[: sample_idx + 1]
 
     return {
         "positions_traj": positions_traj[: sample_idx + 1],
         "velocities_traj": velocities_traj[: sample_idx + 1],
         "pressure_traj": pressure_traj[: sample_idx + 1],
+        "kinetic_traj": kinetic_traj[: sample_idx + 1],
+        "potential_traj": potential_traj[: sample_idx + 1],
         "energy_traj": energy_traj[: sample_idx + 1],
         "temp_traj": temp_traj[: sample_idx + 1],
-        "step_traj": step_traj[: sample_idx + 1],
-        "time_traj": step_traj[: sample_idx + 1] * dt,
+        "step_traj": step_traj,
+        "time_traj": step_traj * dt,
     }
+
+
+def _resolve_output_root(output_root, default_subdir):
+    if output_root is None:
+        return PROJECT_ROOT / "outputs" / default_subdir
+
+    output_root = Path(output_root)
+    if output_root.is_absolute():
+        return output_root
+
+    return PROJECT_ROOT / output_root
+
+
+def make_analysis_output_dir(results, output_root=None, run_name=None):
+    meta = results["metadata"]
+
+    if run_name is None:
+        run_name = (
+            f"{meta['metal']}_{meta['ensemble']}_"
+            f"{int(meta['T0'])}K_{meta['nx']}x{meta['ny']}x{meta['nz']}"
+        )
+
+    output_dir = _resolve_output_root(output_root, "analysis") / run_name
+    plot_dir = output_dir / "plots"
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    plot_dir.mkdir(parents=True, exist_ok=True)
+
+    return output_dir, plot_dir
+
+
+def generate_analysis_plots(
+    results,
+    output_root=None,
+    run_name=None,
+    save_plots=False,
+    show_plots=False,
+):
+    meta = results["metadata"]
+
+    if not save_plots and not show_plots:
+        return {}
+
+    saved = {}
+    plot_dir = None
+
+    if save_plots:
+        _, plot_dir = make_analysis_output_dir(
+            results,
+            output_root=output_root,
+            run_name=run_name,
+        )
+
+    def maybe_path(filename):
+        if save_plots:
+            return plot_dir / filename
+        return None
+
+    traj = results["trajectory"]
+
+    plot_temperature(
+        traj["time_traj"],
+        traj["temp_traj"],
+        path=maybe_path("temperature.png"),
+        show=show_plots,
+        meta=meta,
+    )
+    if save_plots:
+        saved["temperature_plot"] = plot_dir / "temperature.png"
+
+    plot_energy(
+        traj["time_traj"],
+        traj["kinetic_traj"],
+        traj["potential_traj"],
+        traj["energy_traj"],
+        path=maybe_path("energy.png"),
+        show=show_plots,
+        meta=meta,
+    )
+    if save_plots:
+        saved["energy_plot"] = plot_dir / "energy.png"
+
+    if "rdf" in results:
+        plot_rdf(
+            results["rdf"]["r"],
+            results["rdf"]["g_r"],
+            path=maybe_path("rdf.png"),
+            show=show_plots,
+            meta=meta,
+        )
+        if save_plots:
+            saved["rdf_plot"] = plot_dir / "rdf.png"
+
+    if "structure_factor" in results:
+        plot_structure_factor(
+            results["structure_factor"]["k"],
+            results["structure_factor"]["S_k"],
+            path=maybe_path("structure_factor.png"),
+            show=show_plots,
+            meta=meta,
+        )
+        if save_plots:
+            saved["structure_factor_plot"] = plot_dir / "structure_factor.png"
+
+    if "msd" in results:
+        plot_msd(
+            results["msd"]["time"],
+            results["msd"]["msd"],
+            path=maybe_path("msd.png"),
+            show=show_plots,
+            meta=meta,
+        )
+        if save_plots:
+            saved["msd_plot"] = plot_dir / "msd.png"
+
+    if "vacf" in results:
+        plot_vacf(
+            results["vacf"]["time"],
+            results["vacf"]["vacf"],
+            path=maybe_path("vacf.png"),
+            show=show_plots,
+            meta=meta,
+        )
+        if save_plots:
+            saved["vacf_plot"] = plot_dir / "vacf.png"
+
+    return saved
 
 
 def run_analysis_suite(
@@ -206,7 +334,12 @@ def run_analysis_suite(
     n_k=300,
     xyz_file=None,
     xyz_every=None,
+    output_root=None,
+    run_name=None,
     save_outputs=False,
+    save_trajectory=False,
+    save_plots=False,
+    show_plots=False,
 ):
     start_time = time.perf_counter()
 
@@ -233,6 +366,7 @@ def run_analysis_suite(
 
     if n_equil_steps > 0:
         print("Starting equilibration steps...")
+
     for _ in range(n_equil_steps):
         step_nvt_berendsen(
             system,
@@ -243,8 +377,9 @@ def run_analysis_suite(
             sigma=sigma,
             rcut=rcut,
         )
-   
+
     print("Starting production steps...")
+
     traj = run_simulation(
         system=system,
         dt=dt,
@@ -282,6 +417,7 @@ def run_analysis_suite(
             "dt": dt,
             "n_equil_steps": n_equil_steps,
             "n_steps": n_steps,
+            "time_ps": n_steps*dt/1000.0,
             "sample_every": sample_every,
             "n_samples": len(time_traj),
             "lattice_constant": a,
@@ -310,6 +446,7 @@ def run_analysis_suite(
         results["summary"].update(results["thermo"])
 
     need_rdf = bool({"rdf", "coordination_number", "structure_factor"} & analyses)
+
     if need_rdf:
         r_max = r_max_factor * min(system.box)
         r, g_r = compute_rdf(positions_traj, system.box, r_max, n_bins)
@@ -361,10 +498,13 @@ def run_analysis_suite(
     if "coordination_number" in analyses:
         r = results["rdf"]["r"]
         g_r = results["rdf"]["g_r"]
+
         idx_peak = int(np.argmax(g_r))
         idx_min = idx_peak + int(np.argmin(g_r[idx_peak:]))
         r_cn = float(r[idx_min])
+
         CN = compute_coordination_number(r, g_r, rho, r_cn)
+
         results["coordination_number"] = {
             "coordination_number": float(CN),
             "r_cut_cn": r_cn,
@@ -376,7 +516,9 @@ def run_analysis_suite(
         half = max(1, len(energy_traj) // 2)
         E_tail = energy_traj[half:]
         T_mean = float(np.mean(temp_traj[half:]))
+
         Cv = compute_heat_capacity_from_energy(E_tail, T_mean)
+
         results["heat_capacity"] = {
             "Cv": float(Cv),
             "T_mean": T_mean,
@@ -391,6 +533,7 @@ def run_analysis_suite(
             results["rdf"]["g_r"],
             rho,
         )
+
         results["structure_factor"] = {
             "k": k_values,
             "S_k": S_k,
@@ -399,41 +542,28 @@ def run_analysis_suite(
     results["runtime_seconds"] = time.perf_counter() - start_time
     results["simulation_time_fs"] = n_steps * dt
 
+    results["saved_files"] = {}
+
     if save_outputs:
-        saved_files = save_analysis_data(results)
-        results["saved_files"] = saved_files
-    else:
-        results["saved_files"] = {}
+        saved_files = save_analysis_data(
+            results,
+            output_root=output_root,
+            run_name=run_name,
+            save_trajectory=save_trajectory,
+        )
+        results["saved_files"].update(saved_files)
+
+    if save_plots or show_plots:
+        saved_plots = generate_analysis_plots(
+            results,
+            output_root=output_root,
+            run_name=run_name,
+            save_plots=save_plots,
+            show_plots=show_plots,
+        )
+        results["saved_files"].update(saved_plots)
 
     return results
-
-
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-
-
-def _resolve_output_root(output_root, default_subdir):
-    if output_root is None:
-        return PROJECT_ROOT / "outputs" / default_subdir
-
-    output_root = Path(output_root)
-    if output_root.is_absolute():
-        return output_root
-
-    return PROJECT_ROOT / output_root
-
-
-def make_analysis_output_dir(results, output_root=None, run_name=None):
-    meta = results["metadata"]
-
-    if run_name is None:
-        run_name = (
-            f"{meta['metal']}_{meta['ensemble']}_"
-            f"{int(meta['T0'])}K_{meta['nx']}x{meta['ny']}x{meta['nz']}"
-        )
-
-    output_dir = _resolve_output_root(output_root, "analysis") / run_name
-    output_dir.mkdir(parents=True, exist_ok=True)
-    return output_dir
 
 
 def _json_safe(obj):
@@ -452,7 +582,7 @@ def save_analysis_data(
     run_name=None,
     save_trajectory=False,
 ):
-    output_dir = make_analysis_output_dir(
+    output_dir, _ = make_analysis_output_dir(
         results,
         output_root=output_root,
         run_name=run_name,
@@ -463,15 +593,23 @@ def save_analysis_data(
     if "thermo" in results:
         traj = results["trajectory"]
         path = output_dir / "thermo.dat"
+
         np.savetxt(
             path,
-            np.column_stack((
-                traj["time_traj"],
-                traj["temp_traj"],
-                traj["pressure_traj"],
-                traj["energy_traj"],
-            )),
-            header="time_fs temperature_K pressure_eV_per_A3 total_energy_eV",
+            np.column_stack(
+                (
+                    traj["time_traj"],
+                    traj["temp_traj"],
+                    traj["pressure_traj"],
+                    traj["kinetic_traj"],
+                    traj["potential_traj"],
+                    traj["energy_traj"],
+                )
+            ),
+            header=(
+                "time_fs temperature_K pressure_eV_per_A3 "
+                "kinetic_energy_eV potential_energy_eV total_energy_eV"
+            ),
         )
         saved["thermo"] = path
 
@@ -506,15 +644,18 @@ def save_analysis_data(
         path = output_dir / "structure_factor.dat"
         np.savetxt(
             path,
-            np.column_stack((
-                results["structure_factor"]["k"],
-                results["structure_factor"]["S_k"],
-            )),
+            np.column_stack(
+                (
+                    results["structure_factor"]["k"],
+                    results["structure_factor"]["S_k"],
+                )
+            ),
             header="k_1_per_A S_k",
         )
         saved["structure_factor"] = path
 
     summary_path = output_dir / "analysis_summary.json"
+
     with open(summary_path, "w", encoding="utf-8") as f:
         json.dump(
             {
@@ -532,12 +673,15 @@ def save_analysis_data(
             indent=4,
             default=_json_safe,
         )
+
     saved["summary_json"] = summary_path
 
     report_path = output_dir / "analysis_report.txt"
     buffer = io.StringIO()
+
     with redirect_stdout(buffer):
         print_analysis_report(results)
+
     report_path.write_text(buffer.getvalue(), encoding="utf-8")
     saved["report"] = report_path
 
@@ -649,5 +793,13 @@ def print_analysis_report(results):
 
     _section("Output")
     print(f"{'Analyses requested':28s}: {', '.join(meta['analyses_requested'])}")
+
+    if results.get("saved_files"):
+        print()
+        print(f"{'Saved files':28s}:")
+        print("-" * 50)
+        for name, path in results["saved_files"].items():
+            print(f"  {name:26s}: {path}")
+
     print("=" * 58)
     print()

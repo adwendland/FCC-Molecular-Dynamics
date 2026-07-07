@@ -1,0 +1,61 @@
+
+==========================================================
+FCC Molecular Dynamics Analysis Report
+==========================================================
+
+System
+----------------------------------------------------------
+Metal                       : Ni
+Lattice size                : 5 x 5 x 5
+Atoms                       : 500
+Ensemble                    : NVE
+Target temperature          : 4000.00 K
+Production time step        : 0.1000 fs
+Simulation time             : 10000.0000 fs (10.0000 ps)
+Wall runtime                : 20.35 min
+Equilibration steps         : 20000
+Production steps            : 100000
+Samples                     : 201
+Lattice constant            : 3.520000 Å
+Cutoff radius               : 5.683934 Å
+
+Thermodynamics
+----------------------------------------------------------
+Mean Temperature            : 4044.1687 K
+Std Temperature             : 106.1251 K
+Mean Pressure               : 1.240397e-01 eV/Å³
+Std Pressure                : 2.039921e-02 eV/Å³
+Mean Total Energy           : -4.894189e+02 eV
+Std Total Energy            : 1.445928e-01 eV
+
+Structure
+----------------------------------------------------------
+RDF bins                    : 200
+RDF r_max                   : 7.9200 Å
+RDF largest peak at         : 2.3958 Å
+Coordination Number         : 12.0917
+CN cutoff radius            : 3.0690 Å
+FCC reference CN            : 12
+S(k) points                 : 300
+S(k) largest peak at        : 3.1645 1/Å
+
+Dynamics / Transport
+----------------------------------------------------------
+MSD(t_final)                : 1.912957e-01 Å²
+VACF(0)                     : 1.714292e-04
+VACF(t_final)               : 9.406910e-07
+D from MSD                  : 1.460059e-07 Å²/fs
+MSD slope                   : 8.760355e-07 Å²/fs
+D from VACF                 : 1.571367e-04 Å²/fs
+VACF integral               : 4.714101e-04
+
+Fluctuation Quantities
+----------------------------------------------------------
+Heat Capacity Cv            : 1.483412e-05 eV/K
+Mean T used for Cv          : 4044.1687 K
+
+Output
+----------------------------------------------------------
+Analyses requested          : coordination_number, diffusion_msd, diffusion_vacf, heat_capacity, msd, rdf, structure_factor, thermo, vacf
+==========================================================
+

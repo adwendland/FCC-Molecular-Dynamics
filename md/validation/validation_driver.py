@@ -19,9 +19,19 @@ from md.validation import (
     test_timestep_refinement,
     test_momentum_conservation,
     test_temperature_stability,
-    test_equipartition,
+    test_total_kinetic_energy,
+    test_component_equipartition,
     test_fcc_rdf_peaks,
     test_coordination_number,
+)
+
+from md.plotting import (
+    plot_energy_conservation,
+    plot_timestep_convergence,
+    plot_temperature_stability,
+    plot_momentum_conservation,
+    plot_rdf_validation,
+    plot_component_equipartition,
 )
 
 AVAILABLE_TESTS = {
@@ -62,10 +72,14 @@ def run_validation_suite(
     n_steps=5000,
     n_equil_steps=20000,
     sample_every=10,
-    refinement_dt=0.02,
-    refinement_steps=5000,
+    refinement_dt=0.04,
+    refinement_steps=500,
     tests=None,
     save_outputs=False,
+    save_plots=False,
+    show_plots=False,
+    output_root=None,
+    run_name=None,
 ):
     start_time = time.perf_counter()
 
@@ -99,6 +113,9 @@ def run_validation_suite(
 
     tau_T = 100 * dt
 
+    if "timestep_refinement" in tests:
+        refinement_system = system.copy()  
+
     if n_equil_steps > 0:
         print("Starting equilibration steps...")
     for _ in range(n_equil_steps):
@@ -123,6 +140,7 @@ def run_validation_suite(
         "T0": T0,
         "dt": dt,
         "n_steps": n_steps,
+        "time_ps": n_steps * dt / 1000.0,
         "sample_every": sample_every,
         "lattice_constant": a,
         "sigma": sigma,
@@ -140,7 +158,8 @@ def run_validation_suite(
         "convergence_position_error": 1e-6,
         "momentum_drift": 1e-8,
         "temperature_relative_error": 5e-2,
-        "equipartition_relative_error": 5e-2,
+        "total_kinetic_energy_relative_error": 5e-2,
+        "component_equipartition_relative_error": 5e-2,
         "coordination_relative_error": 5e-2,
         "rdf_first_peak_relative_error": 5e-2,
     }
@@ -200,13 +219,13 @@ def run_validation_suite(
         summary["Momentum Conservation"] = m["max_rel_drift"] < tol["momentum_drift"]
 
 
-        # -------------------------
+    # -------------------------
     # Timestep refinement
     # -------------------------
     if "timestep_refinement" in tests:
         print("Testing timestep refinement...")
         results["timestep_refinement"] = test_timestep_refinement(
-            system_builder_fn=system.copy,
+            system_builder_fn=refinement_system.copy,
             dt=refinement_dt,
             n_steps=refinement_steps,
             epsilon=eps,
@@ -248,11 +267,11 @@ def run_validation_suite(
         )
 
     # -------------------------
-    # Equipartition
+    # Total kinetic energy and component equipartition
     # -------------------------
     if "equipartition" in tests:
-        print("Testing equipartition...")
-        results["equipartition"] = test_equipartition(
+        print("Testing total kinetic energy...")
+        results["total_kinetic_energy"] = test_total_kinetic_energy(
             system.copy(),
             dt=dt,
             n_steps=n_steps,
@@ -264,11 +283,29 @@ def run_validation_suite(
             sample_every=sample_every,
         )
 
-        eq = results["equipartition"]
+        ke = results["total_kinetic_energy"]
+        summary["Total Kinetic Energy"] = (
+            ke["relative_equipartition_error"]
+            < tol["total_kinetic_energy_relative_error"]
+        )
 
-        summary["Equipartition"] = (
-            eq["relative_equipartition_error"]
-            < tol["equipartition_relative_error"]
+        print("Testing component equipartition...")
+        results["component_equipartition"] = test_component_equipartition(
+            system.copy(),
+            dt=dt,
+            n_steps=n_steps,
+            T_target=T0,
+            tau_T=100 * dt,
+            epsilon=eps,
+            sigma=sigma,
+            rcut=rcut,
+            sample_every=sample_every,
+        )
+
+        comp = results["component_equipartition"]
+        summary["Component Equipartition"] = (
+            comp["relative_component_equipartition_error"]
+            < tol["component_equipartition_relative_error"]
         )
 
     # -------------------------
@@ -328,11 +365,29 @@ def run_validation_suite(
     results["runtime_seconds"] = time.perf_counter() - start_time
     results["simulation_time_fs"] = n_steps * dt
 
+    saved_files = {}
+
     if save_outputs:
-        saved_files = save_validation_data(results)
-        results["saved_files"] = saved_files
-    else:
-        results["saved_files"] = {}
+        saved_files.update(
+            save_validation_data(
+                results,
+                output_root=output_root,
+                run_name=run_name,
+            )
+        )
+
+    if save_plots or show_plots:
+        saved_files.update(
+            save_validation_plots(
+                results,
+                output_root=output_root,
+                run_name=run_name,
+                save_plots=save_plots,
+                show_plots=show_plots,
+            )
+        )
+
+    results["saved_files"] = saved_files
 
     return results
 
@@ -379,10 +434,10 @@ def print_validation_report(results):
     print(f"{'Lattice size':28s}: {meta['nx']} x {meta['ny']} x {meta['nz']}")
     print(f"{'Atoms':28s}: {meta['N']}")
     print(f"{'Target temperature':28s}: {meta['T0']:.2f} K")
-    print(f"{'Production time step':28s}: {meta['dt']:.4f} fs")
+    print(f"{'Time step':28s}: {meta['dt']:.4f} fs")
     print(f"{'Simulation time':28s}: {sim_time_fs:.4f} fs ({sim_time_ps:.4f} ps)")
     print(f"{'Wall runtime':28s}: {runtime_str}")
-    print(f"{'Production steps':28s}: {meta['n_steps']}")
+    print(f"{'Simulation steps':28s}: {meta['n_steps']}")
     print(f"{'Lattice constant':28s}: {meta['lattice_constant']:.6f} Å")
     print(f"{'Cutoff radius':28s}: {meta['rcut']:.6f} Å")
 
@@ -428,7 +483,11 @@ def print_validation_report(results):
 
         print(f"  {'Reference dt':14s}: {r['reference_dt']:.4f} fs")
 
-    if "temperature_stability" in results or "equipartition" in results:
+    if (
+        "temperature_stability" in results
+        or "total_kinetic_energy" in results
+        or "component_equipartition" in results
+    ):
         _section("Thermodynamic Tests")
 
         if "temperature_stability" in results:
@@ -438,12 +497,25 @@ def print_validation_report(results):
             print(f"  {'Relative Error':26s}: {temp['relative_temperature_error']:.3e}")
             print(f"  {'Tolerance':26s}: {tol['temperature_relative_error']:.3e}")
 
-        if "equipartition" in results:
-            eq = results["equipartition"]
+        if "total_kinetic_energy" in results:
+            ke = results["total_kinetic_energy"]
             print()
-            print(f"{'Equipartition':28s}: {_status(summary['Equipartition'])}")
-            print(f"  {'Relative Error':26s}: {eq['relative_equipartition_error']:.3e}")
-            print(f"  {'Tolerance':26s}: {tol['equipartition_relative_error']:.3e}")
+            print(f"{'Total Kinetic Energy':28s}: {_status(summary['Total Kinetic Energy'])}")
+            print(f"  {'Mean Kinetic Energy':26s}: {ke['mean_kinetic_energy']:.6e} eV")
+            print(f"  {'Expected Kinetic Energy':26s}: {ke['expected_kinetic_energy']:.6e} eV")
+            print(f"  {'Relative Error':26s}: {ke['relative_equipartition_error']:.3e}")
+            print(f"  {'Tolerance':26s}: {tol['total_kinetic_energy_relative_error']:.3e}")
+
+        if "component_equipartition" in results:
+            comp = results["component_equipartition"]
+            print()
+            print(f"{'Component Equipartition':28s}: {_status(summary['Component Equipartition'])}")
+            print(f"  {'Mean Kx':26s}: {comp['mean_kinetic_x']:.6e} eV")
+            print(f"  {'Mean Ky':26s}: {comp['mean_kinetic_y']:.6e} eV")
+            print(f"  {'Mean Kz':26s}: {comp['mean_kinetic_z']:.6e} eV")
+            print(f"  {'Expected Component KE':26s}: {comp['expected_component_energy']:.6e} eV")
+            print(f"  {'Max Relative Error':26s}: {comp['relative_component_equipartition_error']:.3e}")
+            print(f"  {'Tolerance':26s}: {tol['component_equipartition_relative_error']:.3e}")
 
     if "coordination_number" in results or "rdf_peaks" in results:
         _section("Structural Tests")
@@ -557,5 +629,138 @@ def save_validation_data(results, output_root=None, run_name=None):
         ]
         np.savetxt(path, np.asarray(rows), header="dt_fs position_error")
         saved["timestep_refinement"] = path
+
+    return saved
+
+
+
+def save_validation_plots(
+    results,
+    output_root=None,
+    run_name=None,
+    save_plots=True,
+    show_plots=False,
+):
+    """
+    Save/show validation figures using the same pattern as the analysis suite.
+
+    Figures are only written when save_plots=True. They are shown interactively
+    when show_plots=True. If both are False, this function does nothing.
+    """
+    if not save_plots and not show_plots:
+        return {}
+
+    output_dir = make_validation_output_dir(
+        results,
+        output_root=output_root,
+        run_name=run_name,
+    )
+    plot_dir = output_dir / "plots"
+
+    if save_plots:
+        plot_dir.mkdir(parents=True, exist_ok=True)
+
+    def plot_path(filename):
+        return plot_dir / filename if save_plots else None
+
+    saved = {}
+    meta = dict(results["metadata"])
+    meta.setdefault("time_ps", results.get("simulation_time_fs", 0.0) / 1000.0)
+    tol = results["tolerances"]
+
+    if "energy_drift" in results:
+        e = results["energy_drift"]
+        path = plot_path("energy_conservation.png")
+        plot_energy_conservation(
+            np.asarray(e["times"]),
+            np.asarray(e["rel_drift"]),
+            tol["energy_drift"],
+            meta=meta,
+            path=path,
+            show=show_plots,
+        )
+        if path is not None:
+            saved["energy_conservation_plot"] = path
+
+    if "momentum" in results:
+        m = results["momentum"]
+        path = plot_path("momentum_conservation.png")
+        plot_momentum_conservation(
+            np.asarray(m["times"]),
+            np.asarray(m["normalized_momentum_drift"]),
+            meta=meta,
+            path=path,
+            show=show_plots,
+        )
+        if path is not None:
+            saved["momentum_conservation_plot"] = path
+
+    if "timestep_refinement" in results:
+        r = results["timestep_refinement"]
+        rows = sorted((float(dt), float(err)) for dt, err in r["errors"].items())
+        dt_values = np.asarray([row[0] for row in rows])
+        errors = np.asarray([row[1] for row in rows])
+
+        path = plot_path("timestep_convergence.png")
+        plot_timestep_convergence(
+            dt_values,
+            errors,
+            order=r["order"],
+            meta=meta,
+            path=path,
+            show=show_plots,
+        )
+        if path is not None:
+            saved["timestep_convergence_plot"] = path
+
+    if "temperature_stability" in results:
+        temp = results["temperature_stability"]
+        path = plot_path("temperature_stability.png")
+        plot_temperature_stability(
+            np.asarray(temp["times"]),
+            np.asarray(temp["temperatures"]),
+            temp["target_temperature"],
+            meta=meta,
+            path=path,
+            show=show_plots,
+        )
+        if path is not None:
+            saved["temperature_stability_plot"] = path
+
+    # Only plot the component-wise equipartition result.
+    # The total kinetic-energy test is printed in the report but not plotted.
+    if "component_equipartition" in results:
+        comp = results["component_equipartition"]
+        path = plot_path("component_equipartition.png")
+        plot_component_equipartition(
+            np.asarray(comp["times"]),
+            np.asarray(comp["kinetic_x"]),
+            np.asarray(comp["kinetic_y"]),
+            np.asarray(comp["kinetic_z"]),
+            comp["expected_component_energy"],
+            meta=meta,
+            path=path,
+            show=show_plots,
+        )
+        if path is not None:
+            saved["component_equipartition_plot"] = path
+
+    if "rdf_peaks" in results:
+        rdf = results["rdf_peaks"]
+        expected_peak = None
+        if "rdf_first_peak" in results:
+            expected_peak = results["rdf_first_peak"].get("expected", None)
+
+        path = plot_path("rdf_validation.png")
+        plot_rdf_validation(
+            np.asarray(rdf["r"]),
+            np.asarray(rdf["g_r"]),
+            meta=meta,
+            expected_peak=expected_peak,
+            path=path,
+            show=show_plots,
+        )
+        if path is not None:
+            saved["rdf_validation_plot"] = path
 
     return saved

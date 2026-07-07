@@ -1,0 +1,71 @@
+{
+    "metadata": {
+        "metal": "Ni",
+        "nx": 5,
+        "ny": 5,
+        "nz": 5,
+        "N": 500,
+        "T0": 4000.0,
+        "ensemble": "nve",
+        "dt": 0.1,
+        "n_equil_steps": 20000,
+        "n_steps": 100000,
+        "time_ps": 10.0,
+        "sample_every": 500,
+        "n_samples": 201,
+        "lattice_constant": 3.52,
+        "sigma": 2.273573528694146,
+        "epsilon": 0.24500724975000002,
+        "rcut": 5.683933821735366,
+        "analyses_requested": [
+            "coordination_number",
+            "diffusion_msd",
+            "diffusion_vacf",
+            "heat_capacity",
+            "msd",
+            "rdf",
+            "structure_factor",
+            "thermo",
+            "vacf"
+        ]
+    },
+    "summary": {
+        "mean_temperature": 4044.1687266341355,
+        "std_temperature": 106.12513791703044,
+        "mean_pressure": 0.12403973313023185,
+        "std_pressure": 0.020399206210561505,
+        "mean_total_energy": -489.41889900018964,
+        "std_total_energy": 0.14459279566898553,
+        "D_msd": 1.4600592051947527e-07,
+        "D_vacf": 0.0001571367111447014,
+        "coordination_number": 12.091721393034828,
+        "Cv": 1.4834123436446439e-05
+    },
+    "thermo": {
+        "mean_temperature": 4044.1687266341355,
+        "std_temperature": 106.12513791703044,
+        "mean_pressure": 0.12403973313023185,
+        "std_pressure": 0.020399206210561505,
+        "mean_total_energy": -489.41889900018964,
+        "std_total_energy": 0.14459279566898553
+    },
+    "coordination_number": {
+        "coordination_number": 12.091721393034828,
+        "r_cut_cn": 3.0690000000000004,
+        "expected_fcc": 12.0
+    },
+    "heat_capacity": {
+        "Cv": 1.4834123436446439e-05,
+        "T_mean": 4044.1687266341355
+    },
+    "diffusion_msd": {
+        "D": 1.4600592051947527e-07,
+        "slope": 8.760355231168515e-07
+    },
+    "diffusion_vacf": {
+        "D": 0.0001571367111447014,
+        "integral": 0.00047141013343410417
+    },
+    "runtime_seconds": 1221.2479966999963,
+    "simulation_time_fs": 10000.0
+}

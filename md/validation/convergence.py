@@ -22,7 +22,7 @@ def test_timestep_refinement(
 ):
     trajectories = {}
 
-    for factor in [1, 2, 4]:
+    for factor in [1, 2, 4, 8]:
         dt_test = dt / factor
         system = system_builder_fn()
 
@@ -43,25 +43,29 @@ def test_timestep_refinement(
     dt1 = dt
     dt2 = dt / 2
     dt4 = dt / 4
+    dt8 = dt / 8
 
     x1 = trajectories[dt1]["pos"]
     x2 = trajectories[dt2]["pos"]
     x4 = trajectories[dt4]["pos"]
-    box = trajectories[dt4]["box"]
+    x8 = trajectories[dt8]["pos"]
+    box = trajectories[dt8]["box"]
 
-    e1 = rms_position_error(x1, x4, box)
-    e2 = rms_position_error(x2, x4, box)
+    e1 = rms_position_error(x1, x8, box)
+    e2 = rms_position_error(x2, x8, box)
+    e4 = rms_position_error(x4, x8, box)
 
-    if e1 > 0.0 and e2 > 0.0:
-        order = np.log(e1 / e2) / np.log(2.0)
-    else:
-        order = np.nan
+    dt_values = np.array([dt, dt/2, dt/4])
+    errors = np.array([e1, e2, e4])
+
+    order, intercept = np.polyfit(np.log(dt_values), np.log(errors), 1)
 
     return {
         "order": order,
         "errors": {
             dt1: e1,
             dt2: e2,
+            dt4: e4,
         },
-        "reference_dt": dt4,
+        "reference_dt": dt8,
     }

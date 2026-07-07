@@ -8,7 +8,8 @@ from .momentum import test_momentum_conservation
 
 from .thermostat import (
     test_temperature_stability,
-    test_equipartition,
+    test_total_kinetic_energy,
+    test_component_equipartition,
 )
 
 from .structure import (
@@ -22,6 +23,7 @@ from .validation_driver import (
     run_validation_suite,
     print_validation_report,
     save_validation_data,
+    save_validation_plots,
 )
 
 __all__ = [
@@ -29,10 +31,12 @@ __all__ = [
     "test_timestep_refinement",
     "test_momentum_conservation",
     "test_temperature_stability",
-    "test_equipartition",
+    "test_total_kinetic_energy",
+    "test_component_equipartition",
     "test_fcc_rdf_peaks",
     "test_coordination_number",
     "run_validation_suite",
     "print_validation_report",
     "save_validation_data",
+    "save_validation_plots",
 ]
