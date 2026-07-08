@@ -251,7 +251,7 @@ def plot_atoms_3d(
     if visual_shift is not None and visual_shift != 0:
         shift = visual_shift * np.array([Lx, Ly, Lz])
         pos = (pos + shift) % np.array([Lx, Ly, Lz])
-        
+
     fig = go.Figure()
     fig.add_trace(
         go.Scatter3d(
@@ -557,7 +557,7 @@ with st.sidebar:
         n_equil_steps = st.number_input("Equilibration steps", min_value=0, value=2000, step=100)
         n_steps = st.number_input("Production steps", min_value=1, value=5000, step=500)
         
-        if n_steps > 9999:
+        if (n_steps + n_equil_steps) > 9999:
             st.warning("Large run: this may take several minutes in Streamlit.")
 
         sample_every = st.number_input("Sample every", min_value=1, value=50, step=10)
@@ -593,7 +593,7 @@ with st.sidebar:
         n_equil_steps = st.number_input("Equilibration steps", min_value=0, value=2000, step=500)
         n_steps = st.number_input("Validation steps", min_value=1, value=5000, step=500)
 
-        if n_steps > 9999:
+        if (n_steps + n_equil_steps) > 9999:
             st.warning("Large run: this may take several minutes in Streamlit.")
 
         sample_every = st.number_input("Sample every", min_value=1, value=50, step=10)
