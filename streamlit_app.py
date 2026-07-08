@@ -564,9 +564,9 @@ with st.sidebar:
         c1, c2 = st.columns(2)
         with c1:
             metal = st.selectbox("Metal", METALS, index=METALS.index("Ni"))
-            nx = st.selectbox("nx", SIZE_CHOICES, index=3)
-            ny = st.selectbox("ny", SIZE_CHOICES, index=3)
-            nz = st.selectbox("nz", SIZE_CHOICES, index=3)
+            nx = st.selectbox("nx", SIZE_CHOICES, index=2)
+            ny = st.selectbox("ny", SIZE_CHOICES, index=2)
+            nz = st.selectbox("nz", SIZE_CHOICES, index=2)
         with c2:
             T0 = st.number_input("T0 (K)", min_value=1.0, value=300.0, step=100.0)
             dt = st.selectbox("Production dt (fs)", DT_CHOICES, index=DT_CHOICES.index(0.1))
