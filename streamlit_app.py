@@ -36,7 +36,7 @@ from md.validation.validation_driver import (  # noqa: E402
 
 METALS = ["Ag", "Al", "Au", "Cu", "Ni", "Pb", "Pd", "Pt"]
 SIZE_CHOICES = list(range(1, 10))
-DT_CHOICES = [0.001, 0.002, 0.005, 0.01, 0.02, 0.04, 0.05, 0.1, 0.2, 0.5]
+DT_CHOICES = [0.001, 0.002, 0.004, 0.005, 0.01, 0.02, 0.04, 0.05, 0.1, 0.2, 0.4, 0.5]
 THERMAL_DISPLACEMENT_CHOICES = [0.0, 0.005, 0.01, 0.02, 0.03, 0.04, 0.05, 0.1]
 
 DEFAULT_ANALYSES = [
