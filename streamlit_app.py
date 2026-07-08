@@ -36,7 +36,7 @@ from md.validation.validation_driver import (  # noqa: E402
 
 METALS = ["Ag", "Al", "Au", "Cu", "Ni", "Pb", "Pd", "Pt"]
 SIZE_CHOICES = list(range(1, 10))
-DT_CHOICES = [0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5]
+DT_CHOICES = [0.001, 0.002, 0.005, 0.01, 0.02, 0.04, 0.05, 0.1, 0.2, 0.5]
 THERMAL_DISPLACEMENT_CHOICES = [0.0, 0.005, 0.01, 0.02, 0.03, 0.04, 0.05, 0.1]
 
 DEFAULT_ANALYSES = [
@@ -515,7 +515,7 @@ with st.sidebar:
     thermal_displacement = 0.0
     save_trajectory = False
     save_plots = False
-    sample_every = 10
+    sample_every = 50
     n_equil_steps = 0
     n_steps = 0
     nx = ny = nz = 3
@@ -548,7 +548,7 @@ with st.sidebar:
         if n_steps > 9999:
             st.warning("Large run: this may take several minutes in Streamlit.")
 
-        sample_every = st.number_input("Sample every", min_value=1, value=10, step=1)
+        sample_every = st.number_input("Sample every", min_value=1, value=50, step=10)
         analyses = st.multiselect(
             "Analyses",
             sorted(AVAILABLE_ANALYSES),
@@ -584,7 +584,7 @@ with st.sidebar:
         if n_steps > 9999:
             st.warning("Large run: this may take several minutes in Streamlit.")
 
-        sample_every = st.number_input("Sample every", min_value=1, value=10, step=1)
+        sample_every = st.number_input("Sample every", min_value=1, value=50, step=10)
         refinement_steps = st.number_input("Refinement steps", min_value=1, value=500, step=100)
         tests = st.multiselect(
             "Tests",
