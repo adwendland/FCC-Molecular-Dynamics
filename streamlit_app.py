@@ -237,9 +237,21 @@ def make_xyz_bytes(positions_traj: np.ndarray, symbol: str, box: np.ndarray, ste
     return out.getvalue().encode("utf-8")
 
 
-def plot_atoms_3d(positions: np.ndarray, box: np.ndarray, symbol: str, marker_size: int = 7) -> go.Figure:
-    pos = np.asarray(positions)
+def plot_atoms_3d(
+    positions: np.ndarray,
+    box: np.ndarray,
+    symbol: str,
+    marker_size: int = 7,
+    visual_shift: float = 0.25,
+) -> go.Figure:
+    pos = np.asarray(positions, dtype=float).copy()
     Lx, Ly, Lz = np.asarray(box, dtype=float)
+
+    # Visualization only: move atoms off exact periodic boundaries
+    if visual_shift is not None and visual_shift != 0:
+        shift = visual_shift * np.array([Lx, Ly, Lz])
+        pos = (pos + shift) % np.array([Lx, Ly, Lz])
+        
     fig = go.Figure()
     fig.add_trace(
         go.Scatter3d(
