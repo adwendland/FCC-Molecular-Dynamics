@@ -1,0 +1,56 @@
+
+==========================================================
+FCC Molecular Dynamics Analysis Report
+==========================================================
+
+System
+----------------------------------------------------------
+Metal                       : Cu
+Lattice size                : 5 x 5 x 5
+Atoms                       : 500
+Ensemble                    : NVE
+Target temperature          : 300.00 K
+Production time step        : 0.1000 fs
+Simulation time             : 10000.0000 fs (10.0000 ps)
+Wall runtime                : 6.29 min
+Equilibration steps         : 20000
+Production steps            : 100000
+Samples                     : 201
+Lattice constant            : 3.615000 Å
+Cutoff radius               : 5.826478 Å
+
+Thermodynamics
+----------------------------------------------------------
+Mean Temperature            : 305.9267 K
+Std Temperature             : 9.3200 K
+Mean Pressure               : 2.805967e-02 eV/Å³
+Std Pressure                : 4.765047e-03 eV/Å³
+Mean Total Energy           : -7.880122e+02 eV
+Std Total Energy            : 1.183397e-01 eV
+
+Structure
+----------------------------------------------------------
+RDF bins                    : 200
+RDF r_max                   : 8.1338 Å
+RDF largest peak at         : 2.5418 Å
+Coordination Number         : 12.0000
+CN cutoff radius            : 2.9485 Å
+FCC reference CN            : 12
+S(k) points                 : 300
+S(k) largest peak at        : 5.8311 1/Å
+
+Dynamics / Transport
+----------------------------------------------------------
+MSD(t_final)                : 1.997169e-02 Å²
+VACF(0)                     : 1.197442e-05
+VACF(t_final)               : -5.782868e-08
+D from MSD                  : -1.357925e-08 Å²/fs
+MSD slope                   : -8.147550e-08 Å²/fs
+D from VACF                 : 1.247778e-06 Å²/fs
+VACF integral               : 3.743335e-06
+
+Output
+----------------------------------------------------------
+Analyses requested          : coordination_number, diffusion_msd, diffusion_vacf, msd, rdf, structure_factor, thermo, vacf
+==========================================================
+

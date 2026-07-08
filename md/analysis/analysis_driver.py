@@ -215,6 +215,80 @@ def make_analysis_output_dir(results, output_root=None, run_name=None):
     return output_dir, plot_dir
 
 
+
+def write_xyz_trajectory(path, positions_traj, symbol, box=None, steps=None, times=None):
+    """Write a multi-frame extended XYZ trajectory.
+
+    The output is OVITO-friendly. ``positions_traj`` must have shape
+    ``(n_frames, n_atoms, 3)``. If ``box`` is provided, the second line of each
+    frame includes an extended-XYZ Lattice field.
+    """
+    path = Path(path)
+    positions_traj = np.asarray(positions_traj)
+
+    if positions_traj.ndim != 3 or positions_traj.shape[2] != 3:
+        raise ValueError("positions_traj must have shape (n_frames, n_atoms, 3)")
+
+    n_frames, n_atoms, _ = positions_traj.shape
+
+    if steps is None:
+        steps = np.arange(n_frames)
+    if times is None:
+        times = [None] * n_frames
+
+    with open(path, "w", encoding="utf-8") as f:
+        for frame_idx, positions in enumerate(positions_traj):
+            f.write(f"{n_atoms}\n")
+
+            fields = [f"Frame={frame_idx}", f"Step={int(steps[frame_idx])}"]
+            if times[frame_idx] is not None:
+                fields.append(f"Time_fs={float(times[frame_idx]):.8f}")
+
+            if box is not None:
+                Lx, Ly, Lz = np.asarray(box, dtype=float)
+                fields.append(
+                    f'Lattice="{Lx:.8f} 0 0  0 {Ly:.8f} 0  0 0 {Lz:.8f}"'
+                )
+                fields.append('Properties=species:S:1:pos:R:3')
+            else:
+                fields.append('Properties=species:S:1:pos:R:3')
+
+            f.write(" ".join(fields) + "\n")
+
+            for x, y, z in positions:
+                f.write(f"{symbol} {x:.8f} {y:.8f} {z:.8f}\n")
+
+
+def write_xyz_snapshot(path, positions, symbol, box=None, step=None, time=None):
+    """Write a one-frame extended XYZ snapshot."""
+    path = Path(path)
+    positions = np.asarray(positions)
+
+    if positions.ndim != 2 or positions.shape[1] != 3:
+        raise ValueError("positions must have shape (n_atoms, 3)")
+
+    n_atoms = positions.shape[0]
+
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(f"{n_atoms}\n")
+
+        fields = ["Final configuration"]
+        if step is not None:
+            fields.append(f"Step={int(step)}")
+        if time is not None:
+            fields.append(f"Time_fs={float(time):.8f}")
+        if box is not None:
+            Lx, Ly, Lz = np.asarray(box, dtype=float)
+            fields.append(
+                f'Lattice="{Lx:.8f} 0 0  0 {Ly:.8f} 0  0 0 {Lz:.8f}"'
+            )
+        fields.append('Properties=species:S:1:pos:R:3')
+        f.write(" ".join(fields) + "\n")
+
+        for x, y, z in positions:
+            f.write(f"{symbol} {x:.8f} {y:.8f} {z:.8f}\n")
+
+
 def generate_analysis_plots(
     results,
     output_root=None,
@@ -544,11 +618,12 @@ def run_analysis_suite(
 
     results["saved_files"] = {}
 
-    if save_outputs:
+    if save_outputs or save_trajectory:
         saved_files = save_analysis_data(
             results,
             output_root=output_root,
             run_name=run_name,
+            save_data=save_outputs,
             save_trajectory=save_trajectory,
         )
         results["saved_files"].update(saved_files)
@@ -580,6 +655,7 @@ def save_analysis_data(
     results,
     output_root=None,
     run_name=None,
+    save_data=True,
     save_trajectory=False,
 ):
     output_dir, _ = make_analysis_output_dir(
@@ -590,105 +666,142 @@ def save_analysis_data(
 
     saved = {}
 
-    if "thermo" in results:
-        traj = results["trajectory"]
-        path = output_dir / "thermo.dat"
+    if save_data:
+        if "thermo" in results:
+            traj = results["trajectory"]
+            path = output_dir / "thermo.dat"
 
-        np.savetxt(
-            path,
-            np.column_stack(
-                (
-                    traj["time_traj"],
-                    traj["temp_traj"],
-                    traj["pressure_traj"],
-                    traj["kinetic_traj"],
-                    traj["potential_traj"],
-                    traj["energy_traj"],
-                )
-            ),
-            header=(
-                "time_fs temperature_K pressure_eV_per_A3 "
-                "kinetic_energy_eV potential_energy_eV total_energy_eV"
-            ),
-        )
-        saved["thermo"] = path
+            np.savetxt(
+                path,
+                np.column_stack(
+                    (
+                        traj["time_traj"],
+                        traj["temp_traj"],
+                        traj["pressure_traj"],
+                        traj["kinetic_traj"],
+                        traj["potential_traj"],
+                        traj["energy_traj"],
+                    )
+                ),
+                header=(
+                    "time_fs temperature_K pressure_eV_per_A3 "
+                    "kinetic_energy_eV potential_energy_eV total_energy_eV"
+                ),
+            )
+            saved["thermo"] = path
 
-    if "rdf" in results:
-        path = output_dir / "rdf.dat"
-        np.savetxt(
-            path,
-            np.column_stack((results["rdf"]["r"], results["rdf"]["g_r"])),
-            header="r_A g_r",
-        )
-        saved["rdf"] = path
+        if "rdf" in results:
+            path = output_dir / "rdf.dat"
+            np.savetxt(
+                path,
+                np.column_stack((results["rdf"]["r"], results["rdf"]["g_r"])),
+                header="r_A g_r",
+            )
+            saved["rdf"] = path
 
-    if "msd" in results:
-        path = output_dir / "msd.dat"
-        np.savetxt(
-            path,
-            np.column_stack((results["msd"]["time"], results["msd"]["msd"])),
-            header="time_fs msd_A2",
-        )
-        saved["msd"] = path
+        if "msd" in results:
+            path = output_dir / "msd.dat"
+            np.savetxt(
+                path,
+                np.column_stack((results["msd"]["time"], results["msd"]["msd"])),
+                header="time_fs msd_A2",
+            )
+            saved["msd"] = path
 
-    if "vacf" in results:
-        path = output_dir / "vacf.dat"
-        np.savetxt(
-            path,
-            np.column_stack((results["vacf"]["time"], results["vacf"]["vacf"])),
-            header="time_fs vacf",
-        )
-        saved["vacf"] = path
+        if "vacf" in results:
+            path = output_dir / "vacf.dat"
+            np.savetxt(
+                path,
+                np.column_stack((results["vacf"]["time"], results["vacf"]["vacf"])),
+                header="time_fs vacf",
+            )
+            saved["vacf"] = path
 
-    if "structure_factor" in results:
-        path = output_dir / "structure_factor.dat"
-        np.savetxt(
-            path,
-            np.column_stack(
-                (
-                    results["structure_factor"]["k"],
-                    results["structure_factor"]["S_k"],
-                )
-            ),
-            header="k_1_per_A S_k",
-        )
-        saved["structure_factor"] = path
+        if "structure_factor" in results:
+            path = output_dir / "structure_factor.dat"
+            np.savetxt(
+                path,
+                np.column_stack(
+                    (
+                        results["structure_factor"]["k"],
+                        results["structure_factor"]["S_k"],
+                    )
+                ),
+                header="k_1_per_A S_k",
+            )
+            saved["structure_factor"] = path
 
-    summary_path = output_dir / "analysis_summary.json"
+        summary_path = output_dir / "analysis_summary.json"
 
-    with open(summary_path, "w", encoding="utf-8") as f:
-        json.dump(
-            {
-                "metadata": results.get("metadata", {}),
-                "summary": results.get("summary", {}),
-                "thermo": results.get("thermo", {}),
-                "coordination_number": results.get("coordination_number", {}),
-                "heat_capacity": results.get("heat_capacity", {}),
-                "diffusion_msd": results.get("diffusion_msd", {}),
-                "diffusion_vacf": results.get("diffusion_vacf", {}),
-                "runtime_seconds": results.get("runtime_seconds"),
-                "simulation_time_fs": results.get("simulation_time_fs"),
-            },
-            f,
-            indent=4,
-            default=_json_safe,
-        )
+        with open(summary_path, "w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "metadata": results.get("metadata", {}),
+                    "summary": results.get("summary", {}),
+                    "thermo": results.get("thermo", {}),
+                    "coordination_number": results.get("coordination_number", {}),
+                    "heat_capacity": results.get("heat_capacity", {}),
+                    "diffusion_msd": results.get("diffusion_msd", {}),
+                    "diffusion_vacf": results.get("diffusion_vacf", {}),
+                    "runtime_seconds": results.get("runtime_seconds"),
+                    "simulation_time_fs": results.get("simulation_time_fs"),
+                },
+                f,
+                indent=4,
+                default=_json_safe,
+            )
 
-    saved["summary_json"] = summary_path
+        saved["summary_json"] = summary_path
 
-    report_path = output_dir / "analysis_report.txt"
-    buffer = io.StringIO()
+        report_path = output_dir / "analysis_report.txt"
+        buffer = io.StringIO()
 
-    with redirect_stdout(buffer):
-        print_analysis_report(results)
+        with redirect_stdout(buffer):
+            print_analysis_report(results)
 
-    report_path.write_text(buffer.getvalue(), encoding="utf-8")
-    saved["report"] = report_path
+        report_path.write_text(buffer.getvalue(), encoding="utf-8")
+        saved["report"] = report_path
 
     if save_trajectory and "trajectory" in results:
-        path = output_dir / "trajectory.npz"
-        np.savez_compressed(path, **results["trajectory"])
-        saved["trajectory"] = path
+        traj = results["trajectory"]
+        meta = results["metadata"]
+        symbol = meta.get("metal", "X")
+        box = np.asarray(
+            [
+                meta["nx"] * meta["lattice_constant"],
+                meta["ny"] * meta["lattice_constant"],
+                meta["nz"] * meta["lattice_constant"],
+            ],
+            dtype=float,
+        )
+
+        npz_path = output_dir / "trajectory.npz"
+        xyz_path = output_dir / "trajectory.xyz"
+        final_xyz_path = output_dir / "final.xyz"
+
+        np.savez_compressed(npz_path, **traj)
+
+        write_xyz_trajectory(
+            xyz_path,
+            traj["positions_traj"],
+            symbol=symbol,
+            box=box,
+            steps=traj.get("step_traj"),
+            times=traj.get("time_traj"),
+        )
+
+        write_xyz_snapshot(
+            final_xyz_path,
+            traj["positions_traj"][-1],
+            symbol=symbol,
+            box=box,
+            step=traj.get("step_traj", [None])[-1],
+            time=traj.get("time_traj", [None])[-1],
+        )
+
+        saved["trajectory_npz"] = npz_path
+        saved["trajectory_xyz"] = xyz_path
+        saved["final_xyz"] = final_xyz_path
 
     return saved
 
