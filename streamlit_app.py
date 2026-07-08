@@ -589,7 +589,7 @@ with st.sidebar:
         tests = st.multiselect(
             "Tests",
             sorted(AVAILABLE_TESTS),
-            default=AVAILABLE_TESTS,
+            default=DEFAULT_TESTS,
         )
         st.caption("Validation uses fixed ensembles internally: NVE for conservation/convergence, NVT where thermostatted sampling is appropriate.")
         save_outputs = st.checkbox("Save validation outputs", value=False)
