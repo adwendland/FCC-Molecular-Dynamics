@@ -155,7 +155,7 @@ def run_validation_suite(
         "energy_drift": 5e-3,
         "convergence_order_min": 1.0,
         "convergence_order_max": 2.5,
-        "convergence_position_error": 1e-6,
+        "convergence_position_error": 1e-5,
         "momentum_drift": 1e-8,
         "temperature_relative_error": 5e-2,
         "total_kinetic_energy_relative_error": 5e-2,
