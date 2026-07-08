@@ -36,8 +36,8 @@ from md.validation.validation_driver import (  # noqa: E402
 
 METALS = ["Ag", "Al", "Au", "Cu", "Ni", "Pb", "Pd", "Pt"]
 SIZE_CHOICES = list(range(1, 10))
-DT_CHOICES = [0.001, 0.002, 0.005, 0.01, 0.02, 0.04, 0.05, 0.1]
-THERMAL_DISPLACEMENT_CHOICES = [0.0, 0.005, 0.01, 0.02, 0.05]
+DT_CHOICES = [0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5]
+THERMAL_DISPLACEMENT_CHOICES = [0.0, 0.005, 0.01, 0.02, 0.03, 0.04, 0.05, 0.1]
 
 DEFAULT_ANALYSES = [
     "thermo",
@@ -45,10 +45,6 @@ DEFAULT_ANALYSES = [
     "coordination_number",
     "msd",
     "vacf",
-    "diffusion_msd",
-    "diffusion_vacf",
-    "heat_capacity",
-    "structure_factor",
 ]
 DEFAULT_TESTS = [
     "energy_drift",
@@ -522,7 +518,7 @@ with st.sidebar:
     sample_every = 10
     n_equil_steps = 0
     n_steps = 0
-    nx = ny = nz = 4
+    nx = ny = nz = 3
 
     st.divider()
 
@@ -531,9 +527,9 @@ with st.sidebar:
         c1, c2 = st.columns(2)
         with c1:
             metal = st.selectbox("Metal", METALS, index=METALS.index("Ni"))
-            nx = st.selectbox("nx", SIZE_CHOICES, index=3)
-            ny = st.selectbox("ny", SIZE_CHOICES, index=3)
-            nz = st.selectbox("nz", SIZE_CHOICES, index=3)
+            nx = st.selectbox("nx", SIZE_CHOICES, index=2)
+            ny = st.selectbox("ny", SIZE_CHOICES, index=2)
+            nz = st.selectbox("nz", SIZE_CHOICES, index=2)
         with c2:
             ensemble_label = st.selectbox("Ensemble", ["NVE", "NVT"], index=0)
             T0 = st.number_input("T0 (K)", min_value=1.0, value=300.0, step=100.0)
@@ -548,6 +544,10 @@ with st.sidebar:
         st.subheader("Simulation / Analysis")
         n_equil_steps = st.number_input("Equilibration steps", min_value=0, value=2000, step=100)
         n_steps = st.number_input("Production steps", min_value=1, value=5000, step=500)
+        
+        if n_steps > 9999:
+            st.warning("Large run: this may take several minutes in Streamlit.")
+
         sample_every = st.number_input("Sample every", min_value=1, value=10, step=1)
         analyses = st.multiselect(
             "Analyses",
@@ -580,6 +580,10 @@ with st.sidebar:
         st.subheader("Validation")
         n_equil_steps = st.number_input("Equilibration steps", min_value=0, value=2000, step=500)
         n_steps = st.number_input("Validation steps", min_value=1, value=5000, step=500)
+
+        if n_steps > 9999:
+            st.warning("Large run: this may take several minutes in Streamlit.")
+
         sample_every = st.number_input("Sample every", min_value=1, value=10, step=1)
         refinement_steps = st.number_input("Refinement steps", min_value=1, value=500, step=100)
         tests = st.multiselect(
@@ -607,6 +611,10 @@ with st.sidebar:
         st.subheader("Performance")
         sizes_text = st.text_input("Benchmark sizes", value="3x3x3,4x4x4,5x5x5")
         n_steps = st.number_input("Integrator steps / repeat", min_value=1, value=100, step=50)
+
+        if n_steps > 9999:
+            st.warning("Large run: this may take several minutes in Streamlit.")
+
         repeats = st.number_input("Repeats", min_value=1, value=5, step=1)
         warmup = st.number_input("Warmup repeats", min_value=0, value=2, step=1)
         save_outputs = st.checkbox("Save performance outputs", value=False)
