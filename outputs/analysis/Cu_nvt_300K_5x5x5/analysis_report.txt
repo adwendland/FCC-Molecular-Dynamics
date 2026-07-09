@@ -12,7 +12,7 @@ Ensemble                    : NVT
 Target temperature          : 300.00 K
 Production time step        : 0.1000 fs
 Simulation time             : 10000.0000 fs (10.0000 ps)
-Wall runtime                : 6.36 min
+Wall runtime                : 6.35 min
 Equilibration steps         : 20000
 Production steps            : 100000
 Samples                     : 201

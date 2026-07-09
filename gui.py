@@ -144,12 +144,25 @@ def _analysis_output_dir_from_results(results: dict[str, Any], run_name: str | N
     out.mkdir(parents=True, exist_ok=True)
     return out
 
+def center_positions_in_box(positions: np.ndarray, box) -> np.ndarray:
+    pos = np.asarray(positions, dtype=float).copy()
+    box = np.asarray(box, dtype=float)
+
+    mins = pos.min(axis=0)
+    maxs = pos.max(axis=0)
+    center_atoms = 0.5 * (mins + maxs)
+    center_box = 0.5 * box
+
+    return pos + (center_box - center_atoms)
 
 def write_xyz_snapshot(path: str | Path, positions: np.ndarray, element: str, box=None, comment: str = "Final configuration") -> Path:
     """Write one OVITO-compatible extended XYZ frame."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     positions = np.asarray(positions, dtype=float)
+
+    if box is not None:
+        positions = center_positions_in_box(positions, box)
 
     if box is not None:
         Lx, Ly, Lz = np.asarray(box, dtype=float)
@@ -184,6 +197,8 @@ def write_xyz_trajectory(path: str | Path, positions_traj: np.ndarray, element: 
 
     with path.open("w", encoding="utf-8") as f:
         for frame_idx, frame in enumerate(positions_traj):
+            if box is not None:
+                frame = center_positions_in_box(frame, box)
             step = int(steps[frame_idx]) if frame_idx < len(steps) else frame_idx
             time = times[frame_idx] if frame_idx < len(times) else None
             time_part = "" if time is None else f" Time={float(time):.8f}fs"
@@ -574,6 +589,8 @@ class LammpsMDGUI(tk.Tk):
 
         vars_["thermal_displacement"] = tk.StringVar(value=str(defaults.get("thermal_displacement", 0.01)))
         disp_values = [
+            "0.0",
+            "0.005",
             "0.01",
             "0.02",
             "0.03",

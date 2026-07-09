@@ -1,5 +1,5 @@
 # streamlit_app.py
-# FCC Molecular Dynamics – Web Version
+# FCC Molecular Dynamics – polished Streamlit workbench
 
 from __future__ import annotations
 
@@ -219,18 +219,43 @@ def array_to_dat_bytes(*cols: np.ndarray, headers: list[str]) -> bytes:
     return buf.getvalue().encode("utf-8")
 
 
-def make_xyz_bytes(positions_traj: np.ndarray, symbol: str, box: np.ndarray, steps=None, times=None) -> bytes:
+def center_positions_in_box(positions: np.ndarray, box: np.ndarray) -> np.ndarray:
+    """Center an unwrapped/wrapped cluster in the simulation box for clean OVITO/Plotly display."""
+    pos = np.asarray(positions, dtype=float).copy()
+    box = np.asarray(box, dtype=float)
+    if pos.size == 0:
+        return pos
+    center_atoms = 0.5 * (pos.min(axis=0) + pos.max(axis=0))
+    center_box = 0.5 * box
+    return pos + (center_box - center_atoms)
+
+
+def make_xyz_bytes(
+    positions_traj: np.ndarray,
+    symbol: str,
+    box: np.ndarray,
+    steps=None,
+    times=None,
+) -> bytes:
+    """Write an OVITO-compatible extended XYZ trajectory.
+
+    Exported coordinates are always centered for clean OVITO display. This changes
+    only exported coordinates, not the simulation data.
+    """
     out = io.StringIO()
-    positions_traj = np.asarray(positions_traj)
+    positions_traj = np.asarray(positions_traj, dtype=float)
     if steps is None:
         steps = np.arange(len(positions_traj))
     if times is None:
         times = [None] * len(positions_traj)
+
     Lx, Ly, Lz = np.asarray(box, dtype=float)
     lattice = f'Lattice="{Lx:.8f} 0 0  0 {Ly:.8f} 0  0 0 {Lz:.8f}" Properties=species:S:1:pos:R:3'
-    for i, frame in enumerate(positions_traj):
+
+    for i, raw_frame in enumerate(positions_traj):
+        frame = center_positions_in_box(raw_frame, box)
         out.write(f"{frame.shape[0]}\n")
-        time_part = "" if times[i] is None else f" Time_fs={float(times[i]):.8f}"
+        time_part = "" if times[i] is None else f" Time={float(times[i]):.8f}fs"
         out.write(f"Frame={i} Step={int(steps[i])}{time_part} {lattice}\n")
         for x, y, z in frame:
             out.write(f"{symbol} {x:.8f} {y:.8f} {z:.8f}\n")
@@ -242,60 +267,112 @@ def plot_atoms_3d(
     box: np.ndarray,
     symbol: str,
     marker_size: int = 7,
-    visual_shift: float = 0.25,
 ) -> go.Figure:
-    pos = np.asarray(positions, dtype=float).copy()
-    Lx, Ly, Lz = np.asarray(box, dtype=float)
+    """Pretty FCC visualization with atoms always centered and equal box scales."""
+    box = np.asarray(box, dtype=float)
+    Lx, Ly, Lz = box
+    pos = center_positions_in_box(positions, box)
 
-    # Visualization only: move atoms off exact periodic boundaries
-    if visual_shift is not None and visual_shift != 0:
-        shift = visual_shift * np.array([Lx, Ly, Lz])
-        pos = (pos + shift) % np.array([Lx, Ly, Lz])
+    # Keep visual coordinates inside the displayed cell without the old 0.25-box wrap shift.
+    pos = np.mod(pos, box)
 
     fig = go.Figure()
     fig.add_trace(
         go.Scatter3d(
             x=pos[:, 0], y=pos[:, 1], z=pos[:, 2],
             mode="markers",
-            marker=dict(size=marker_size, opacity=0.9),
+            marker=dict(size=marker_size, opacity=0.92),
             name=symbol,
             hovertemplate=f"{symbol}<br>x=%{{x:.3f}} Å<br>y=%{{y:.3f}} Å<br>z=%{{z:.3f}} Å<extra></extra>",
         )
     )
+
     corners = np.array([
         [0, 0, 0], [Lx, 0, 0], [Lx, Ly, 0], [0, Ly, 0],
         [0, 0, Lz], [Lx, 0, Lz], [Lx, Ly, Lz], [0, Ly, Lz],
     ])
     edges = [(0,1),(1,2),(2,3),(3,0),(4,5),(5,6),(6,7),(7,4),(0,4),(1,5),(2,6),(3,7)]
     for i, j in edges:
-        fig.add_trace(go.Scatter3d(
-            x=[corners[i,0], corners[j,0]], y=[corners[i,1], corners[j,1]], z=[corners[i,2], corners[j,2]],
-            mode="lines", line=dict(width=2), showlegend=False, hoverinfo="skip"
-        ))
+        fig.add_trace(
+            go.Scatter3d(
+                x=[corners[i,0], corners[j,0]],
+                y=[corners[i,1], corners[j,1]],
+                z=[corners[i,2], corners[j,2]],
+                mode="lines",
+                line=dict(width=3),
+                showlegend=False,
+                hoverinfo="skip",
+            )
+        )
+
     fig.update_layout(
-        title=f"{symbol} atomic configuration",
-        scene=dict(
-            xaxis=dict(title="x (Å)", range=[0, Lx], showbackground=False),
-            yaxis=dict(title="y (Å)", range=[0, Ly], showbackground=False),
-            zaxis=dict(title="z (Å)", range=[0, Lz], showbackground=False),
-            aspectmode="data",
+        title=dict(
+            text=f"{symbol} FCC configuration",
+            x=0.02,
         ),
-        margin=dict(l=0, r=0, t=35, b=0),
+        scene=dict(
+            xaxis=dict(title="x (Å)", range=[0, Lx], showbackground=False, showspikes=False),
+            yaxis=dict(title="y (Å)", range=[0, Ly], showbackground=False, showspikes=False),
+            zaxis=dict(title="z (Å)", range=[0, Lz], showbackground=False, showspikes=False),
+            aspectmode="cube",
+        ),
+        margin=dict(l=0, r=0, t=58, b=0),
         showlegend=False,
-        height=650,
-        scene_camera=dict(eye=dict(x=1.8, y=1.6, z=1.2)),
+        height=660,
+        scene_camera=dict(eye=dict(x=1.65, y=1.75, z=1.25)),
     )
     return fig
 
 
+def _subtitle_from_results(results: dict[str, Any], *, omit_dt_time: bool = False) -> str:
+    meta = results.get("metadata", {})
+    if not meta:
+        return ""
+    parts = []
+    if "metal" in meta:
+        parts.append(str(meta["metal"]))
+    if all(k in meta for k in ("nx", "ny", "nz")):
+        parts.append(f"{meta['nx']}×{meta['ny']}×{meta['nz']} | {meta.get('N', 4*int(meta['nx'])*int(meta['ny'])*int(meta['nz']))} atoms")
+    if "ensemble" in meta:
+        parts.append(str(meta["ensemble"]).upper())
+    if "T0" in meta:
+        parts.append(f"{float(meta['T0']):.0f} K")
 
-def _mpl_figure(title: str, xlabel: str = "", ylabel: str = ""):
-    fig, ax = plt.subplots(figsize=(7.2, 4.6), dpi=120)
-    ax.set_title(title)
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
-    ax.grid(True, alpha=0.30)
+    # For timestep convergence, dt and time_ps are misleading because the
+    # figure compares multiple refined steps rather than one production dt.
+    if not omit_dt_time:
+        if "dt" in meta:
+            parts.append(f"dt={float(meta['dt']):g} fs")
+        if "time_ps" in meta:
+            parts.append(f"{float(meta['time_ps']):g} ps")
+
+    return " | ".join(parts)
+
+
+def _convergence_subtitle_from_results(results: dict[str, Any]) -> str:
+    base = _subtitle_from_results(results, omit_dt_time=True)
+    refinement = "Three-level refinement: dt, dt/2, dt/4"
+    return f"{base} | {refinement}" if base else refinement
+
+
+def _mpl_figure(title: str, xlabel: str = "", ylabel: str = "", subtitle: str = ""):
+    fig, ax = plt.subplots(figsize=(7.4, 4.8), dpi=130)
+    fig.suptitle(title, fontsize=14, fontweight="bold", y=0.985)
+    if subtitle:
+        ax.set_title(subtitle, fontsize=9.5, pad=8)
+    ax.set_xlabel(xlabel, fontsize=10.5)
+    ax.set_ylabel(ylabel, fontsize=10.5)
+    ax.grid(True, alpha=0.28, linewidth=0.8)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.tick_params(labelsize=9.5)
     return fig, ax
+
+
+def _finish_gui_like(fig, ax):
+    ax.margins(x=0.02, y=0.08)
+    fig.tight_layout(rect=[0, 0, 1, 0.94])
+    return fig
 
 
 def _no_data_figure(message: str):
@@ -303,7 +380,7 @@ def _no_data_figure(message: str):
     ax.text(0.5, 0.5, message, ha="center", va="center", transform=ax.transAxes)
     ax.set_xticks([])
     ax.set_yticks([])
-    fig.tight_layout()
+    _finish_gui_like(fig, ax)
     return fig
 
 
@@ -319,23 +396,23 @@ def plot_analysis(results: dict[str, Any], choice: str):
     traj = results["trajectory"]
 
     if choice == "Temperature":
-        fig, ax = _mpl_figure("Temperature vs Time", "Time (fs)", "Temperature (K)")
+        fig, ax = _mpl_figure("Temperature vs Time", "Time (fs)", "Temperature (K)", _subtitle_from_results(results))
         ax.plot(traj["time_traj"], traj["temp_traj"], linewidth=1.8)
 
     elif choice == "Energy":
-        fig, ax = _mpl_figure("Energy vs Time", "Time (fs)", "Energy (eV)")
+        fig, ax = _mpl_figure("Energy vs Time", "Time (fs)", "Energy (eV)", _subtitle_from_results(results))
         ax.plot(traj["time_traj"], traj["kinetic_traj"], label="Kinetic", linewidth=1.6)
         ax.plot(traj["time_traj"], traj["potential_traj"], label="Potential", linewidth=1.6)
         ax.plot(traj["time_traj"], traj["energy_traj"], label="Total", linewidth=1.8)
         ax.legend(frameon=False)
 
     elif choice == "Pressure":
-        fig, ax = _mpl_figure("Pressure vs Time", "Time (fs)", "Pressure (eV/Å³)")
+        fig, ax = _mpl_figure("Pressure vs Time", "Time (fs)", "Pressure (eV/Å³)", _subtitle_from_results(results))
         ax.plot(traj["time_traj"], traj["pressure_traj"], linewidth=1.8)
 
     elif choice == "RDF" and "rdf" in results:
         rdf = results["rdf"]
-        fig, ax = _mpl_figure("Radial Distribution Function", "r (Å)", "g(r)")
+        fig, ax = _mpl_figure("Radial Distribution Function", "r (Å)", "g(r)", _subtitle_from_results(results))
         ax.plot(rdf["r"], rdf["g_r"], linewidth=1.8)
         if "coordination_number" in results:
             r_cn = results["coordination_number"].get("r_cut_cn")
@@ -345,25 +422,25 @@ def plot_analysis(results: dict[str, Any], choice: str):
 
     elif choice == "Structure factor" and "structure_factor" in results:
         sk = results["structure_factor"]
-        fig, ax = _mpl_figure("Structure Factor", "k (1/Å)", "S(k)")
+        fig, ax = _mpl_figure("Structure Factor", "k (1/Å)", "S(k)", _subtitle_from_results(results))
         ax.plot(sk["k"], sk["S_k"], linewidth=1.8)
 
     elif choice == "MSD" and "msd" in results:
         msd = results["msd"]
-        fig, ax = _mpl_figure("Mean Squared Displacement", "Time (fs)", "MSD (Å²)")
+        fig, ax = _mpl_figure("Mean Squared Displacement", "Time (fs)", "MSD (Å²)", _subtitle_from_results(results))
         ax.plot(msd["time"], msd["msd"], linewidth=1.8)
 
     elif choice == "VACF" and "vacf" in results:
         vacf = np.asarray(results["vacf"]["vacf"])
         y = vacf / vacf[0] if len(vacf) and vacf[0] != 0 else vacf
-        fig, ax = _mpl_figure("Velocity Autocorrelation Function", "Time (fs)", "Normalized VACF")
+        fig, ax = _mpl_figure("Velocity Autocorrelation Function", "Time (fs)", "Normalized VACF", _subtitle_from_results(results))
         ax.plot(results["vacf"]["time"], y, linewidth=1.8)
         ax.axhline(0.0, linewidth=1.0, alpha=0.7)
 
     else:
         return _no_data_figure(f"No data available for {choice}.")
 
-    fig.tight_layout()
+    _finish_gui_like(fig, ax)
     return fig
 
 
@@ -372,14 +449,14 @@ def plot_validation(results: dict[str, Any], choice: str):
         d = results["energy_drift"]
         y = d.get("rel_drift", d.get("relative_drift", d.get("drift", [])))
         x = d.get("times", d.get("time", d.get("steps", np.arange(len(_as_array(y))))))
-        fig, ax = _mpl_figure("Energy Conservation", "Time / step", "Relative energy drift")
+        fig, ax = _mpl_figure("Energy Conservation", "Time / step", "Relative energy drift", _subtitle_from_results(results))
         ax.plot(x, y, linewidth=1.8)
         ax.axhline(0.0, linewidth=1.0, alpha=0.7)
 
     elif choice == "Momentum conservation" and "momentum" in results:
         d = results["momentum"]
         y = d.get("normalized_momentum_drift", d.get("normalized_drift", d.get("momentum_norm", [])))
-        fig, ax = _mpl_figure("Momentum Conservation", "Sample", "Normalized drift")
+        fig, ax = _mpl_figure("Momentum Conservation", "Sample", "Normalized drift", _subtitle_from_results(results))
         ax.plot(y, linewidth=1.8)
         ax.axhline(0.0, linewidth=1.0, alpha=0.7)
 
@@ -394,7 +471,7 @@ def plot_validation(results: dict[str, Any], choice: str):
             dt_vals = np.asarray(d.get("dt_values", []), dtype=float)
             err_vals = np.asarray(errors, dtype=float)
 
-        fig, ax = _mpl_figure("Timestep Convergence", "dt (fs)", "RMS position error (Å)")
+        fig, ax = _mpl_figure("Timestep Convergence", "dt (fs)", "RMS position error (Å)", _convergence_subtitle_from_results(results))
         if len(dt_vals) and len(err_vals):
             order = d.get("order")
             label = "Position error" if order is None else f"Position error, order ≈ {float(order):.2f}"
@@ -410,7 +487,7 @@ def plot_validation(results: dict[str, Any], choice: str):
         d = results["temperature_stability"]
         y = d.get("temperatures", d.get("temperature", []))
         x = d.get("times", np.arange(len(_as_array(y))))
-        fig, ax = _mpl_figure("Temperature Stability", "Time / sample", "Temperature (K)")
+        fig, ax = _mpl_figure("Temperature Stability", "Time / sample", "Temperature (K)", _subtitle_from_results(results))
         ax.plot(x, y, linewidth=1.8, label="Measured T")
         target = results.get("metadata", {}).get("T0")
         if target is not None:
@@ -423,6 +500,7 @@ def plot_validation(results: dict[str, Any], choice: str):
             "Component Equipartition",
             "Time (fs)",
             "Component kinetic energy (eV)",
+            _subtitle_from_results(results),
         )
 
         # The validation driver returns time series named kinetic_x/y/z.
@@ -464,7 +542,7 @@ def plot_validation(results: dict[str, Any], choice: str):
         d = results["rdf_peaks"]
         r = d.get("r", d.get("r_values", []))
         g = d.get("g_r", d.get("rdf", []))
-        fig, ax = _mpl_figure("RDF Validation", "r (Å)", "g(r)")
+        fig, ax = _mpl_figure("RDF Validation", "r (Å)", "g(r)", _subtitle_from_results(results))
         ax.plot(r, g, linewidth=1.8, label="g(r)")
         measured = d.get("measured_peaks", [])
         expected = d.get("expected_peaks", [])
@@ -477,7 +555,7 @@ def plot_validation(results: dict[str, Any], choice: str):
     else:
         return _no_data_figure(f"No data available for {choice}.")
 
-    fig.tight_layout()
+    _finish_gui_like(fig, ax)
     return fig
 
 
@@ -487,7 +565,7 @@ def plot_performance(results: dict[str, Any], choice: str):
 
     if choice == "Performance scaling":
         y = [c["integrator_nve"]["atom_steps_per_second"] for c in cases]
-        fig, ax = _mpl_figure("Performance Scaling", "System size", "Atom-steps / s")
+        fig, ax = _mpl_figure("Performance Scaling", "System size", "Atom-steps / s", f"{results.get('metadata', {}).get('metal', "")} | backend={results.get('metadata', {}).get('backend', "auto")}")
         ax.plot(labels, y, marker="o", linewidth=1.8)
         ax.tick_params(axis="x", rotation=25)
 
@@ -496,7 +574,7 @@ def plot_performance(results: dict[str, Any], choice: str):
         width = 0.35
         neighbor = [1000 * c["neighbor_build"]["mean_seconds"] for c in cases]
         force = [1000 * c["force_evaluation"]["mean_seconds"] for c in cases]
-        fig, ax = _mpl_figure("Kernel Timing", "System size", "Time (ms)")
+        fig, ax = _mpl_figure("Kernel Timing", "System size", "Time (ms)", f"{results.get('metadata', {}).get('metal', "")} | neighbor-list build vs force evaluation")
         ax.bar(x - width / 2, neighbor, width, label="Neighbor list")
         ax.bar(x + width / 2, force, width, label="Force")
         ax.set_xticks(x)
@@ -506,7 +584,7 @@ def plot_performance(results: dict[str, Any], choice: str):
     else:
         return _no_data_figure(f"No data available for {choice}.")
 
-    fig.tight_layout()
+    _finish_gui_like(fig, ax)
     return fig
 
 
@@ -544,8 +622,8 @@ with st.sidebar:
             nz = st.selectbox("nz", SIZE_CHOICES, index=2)
         with c2:
             ensemble_label = st.selectbox("Ensemble", ["NVE", "NVT"], index=0)
-            T0 = st.number_input("T0 (K)", min_value=1.0, value=300.0, step=100.0)
-            dt = st.selectbox("dt (fs)", DT_CHOICES, index=DT_CHOICES.index(0.1))
+            T0 = st.number_input("Target temperature (K)", min_value=1.0, value=300.0, step=100.0)
+            dt = st.selectbox("Timestep dt (fs)", DT_CHOICES, index=DT_CHOICES.index(0.1))
             thermal_displacement = st.selectbox("thermal disp.", THERMAL_DISPLACEMENT_CHOICES, index=2)
 
         st.caption(
@@ -596,8 +674,8 @@ with st.sidebar:
         if (n_steps + n_equil_steps) > 9999:
             st.warning("Large run: this may take several minutes in Streamlit.")
 
-        sample_every = st.number_input("Sample every", min_value=1, value=50, step=10)
         refinement_steps = st.number_input("Refinement steps", min_value=1, value=500, step=100)
+        sample_every = st.number_input("Sample every", min_value=1, value=50, step=10)
         tests = st.multiselect(
             "Tests",
             sorted(AVAILABLE_TESTS),
@@ -613,9 +691,9 @@ with st.sidebar:
         c1, c2 = st.columns(2)
         with c1:
             metal = st.selectbox("Metal", METALS, index=METALS.index("Ni"))
-            T0 = st.number_input("T0 (K)", min_value=1.0, value=300.0, step=100.0)
+            T0 = st.number_input("Target temperature (K)", min_value=1.0, value=300.0, step=100.0)
         with c2:
-            dt = st.selectbox("dt (fs)", DT_CHOICES, index=DT_CHOICES.index(0.1))
+            dt = st.selectbox("Timestep dt (fs)", DT_CHOICES, index=DT_CHOICES.index(0.1))
             backend = st.selectbox("Backend", ["auto", "python", "serial-baseline"], index=0)
 
         st.caption(f"Ready | {metal} | performance benchmark | NVE timing kernel | dt={dt:g} fs")
@@ -638,13 +716,80 @@ with st.sidebar:
     # st.text_area("", value=preview, height=260, label_visibility="collapsed")
 
 
+
+
+class StreamlitProgressWriter:
+    """Mirror driver print output into the Streamlit status area.
+
+    Your analysis/validation/performance drivers print progress to stdout.
+    In Streamlit, stdout goes to the terminal unless we redirect it. This writer
+    catches those messages and updates the visible progress/status widgets live.
+    """
+
+    def __init__(self, progress_bar, status_box, start: int, stop: int, label: str):
+        self.progress_bar = progress_bar
+        self.status_box = status_box
+        self.value = int(start)
+        self.stop = int(stop)
+        self.label = label
+        self.buffer: list[str] = []
+        self._line_count = 0
+
+    def write(self, text: str) -> int:
+        if not text:
+            return 0
+
+        # Keep terminal behavior too, so debugging output is not lost.
+        sys.__stdout__.write(text)
+        sys.__stdout__.flush()
+
+        for line in text.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+
+            self.buffer.append(line)
+            self._line_count += 1
+
+            lowered = line.lower()
+            bump = 1
+            if any(key in lowered for key in (
+                "starting", "initializing", "lattice", "equil", "production",
+                "rdf", "msd", "vacf", "structure", "coordination",
+                "energy", "momentum", "equipartition", "timestep",
+                "benchmark", "neighbor", "force", "integrator", "saved",
+            )):
+                bump = 3
+
+            self.value = min(self.stop, max(self.value + bump, self.value))
+            tail = "\n".join(self.buffer[-6:])
+            self.progress_bar.progress(self.value, text=f"{self.label}: {line[:90]}")
+            self.status_box.info(f"Running...\n\n```text\n{tail}\n```")
+
+        return len(text)
+
+    def flush(self) -> None:
+        sys.__stdout__.flush()
+
+
 # -----------------------------------------------------------------------------
 # Execute selected workflow
 # -----------------------------------------------------------------------------
+def _store_run(kind_name: str, results: dict[str, Any], report: str) -> None:
+    st.session_state["last_kind"] = kind_name
+    st.session_state["last_results"] = results
+    st.session_state["last_report"] = report
+
+
 if run_clicked:
+    progress = st.progress(0, text="Preparing run...")
+    status = st.empty()
     try:
         if mode == "Simulation / Analysis":
-            with st.spinner("Running analysis..."):
+            status.info("Building FCC lattice, initializing velocities, and running equilibration/production...")
+            progress.progress(12, text="Running MD trajectory...")
+            live = StreamlitProgressWriter(progress, status, 12, 82, "Analysis")
+            with redirect_stdout(live):
                 results = run_analysis_suite(
                     metal=metal,
                     nx=int(nx), ny=int(ny), nz=int(nz),
@@ -662,14 +807,17 @@ if run_clicked:
                     save_plots=bool(save_plots),
                     show_plots=False,
                 )
+            progress.progress(82, text="Generating report and UI tables...")
             report = capture_report(print_analysis_report, results)
-            st.session_state["last_kind"] = "analysis"
-            st.session_state["last_results"] = results
-            st.session_state["last_report"] = report
-            st.success("Analysis complete.")
+            _store_run("analysis", results, report)
+            progress.progress(100, text="Analysis complete.")
+            status.success("Analysis complete.")
 
         elif mode == "Validation":
-            with st.spinner("Running validation..."):
+            status.info("Running validation tests and collecting pass/fail diagnostics...")
+            progress.progress(10, text="Running validation suite...")
+            live = StreamlitProgressWriter(progress, status, 10, 85, "Validation")
+            with redirect_stdout(live):
                 results = run_validation_suite(
                     metal=metal,
                     nx=int(nx), ny=int(ny), nz=int(nz),
@@ -685,15 +833,19 @@ if run_clicked:
                     save_plots=bool(save_plots),
                     show_plots=False,
                 )
+            progress.progress(85, text="Formatting validation report...")
             report = capture_report(print_validation_report, results)
-            st.session_state["last_kind"] = "validation"
-            st.session_state["last_results"] = results
-            st.session_state["last_report"] = report
-            st.success("Validation complete.")
+            _store_run("validation", results, report)
+            progress.progress(100, text="Validation complete.")
+            status.success("Validation complete.")
 
         else:
-            with st.spinner("Running performance suite..."):
-                sizes = parse_sizes(sizes_text)
+            status.info("Running neighbor-list, force, and integrator timing benchmarks...")
+            progress.progress(8, text="Parsing benchmark sizes...")
+            sizes = parse_sizes(sizes_text)
+            progress.progress(18, text="Running performance suite...")
+            live = StreamlitProgressWriter(progress, status, 18, 86, "Performance")
+            with redirect_stdout(live):
                 results = run_performance_suite(
                     metal=metal,
                     sizes=sizes,
@@ -707,13 +859,14 @@ if run_clicked:
                     backend=backend,
                     save_outputs=bool(save_outputs),
                 )
+            progress.progress(86, text="Formatting benchmark report...")
             report = capture_report(print_performance_report, results)
-            st.session_state["last_kind"] = "performance"
-            st.session_state["last_results"] = results
-            st.session_state["last_report"] = report
-            st.success("Performance suite complete.")
+            _store_run("performance", results, report)
+            progress.progress(100, text="Performance suite complete.")
+            status.success("Performance suite complete.")
     except Exception as exc:
-        st.error(f"Run failed: {exc}")
+        progress.empty()
+        status.error(f"Run failed: {exc}")
         st.exception(exc)
 
 
@@ -751,7 +904,7 @@ if mode == "Simulation / Analysis":
             with col_a:
                 frame_idx = st.slider("Frame", 0, frame_count - 1, frame_count - 1)
             with col_b:
-                marker_size = st.slider("Atom size", 2, 10, 7)
+                marker_size = st.slider("Atom size", 2, 12, 7)
             with col_c:
                 st.metric("Time (fs)", fmt(traj["time_traj"][frame_idx]))
             box = np.array([
@@ -767,11 +920,19 @@ if mode == "Simulation / Analysis":
         else:
             meta = results["metadata"]
             summary = results.get("summary", {})
-            c1, c2, c3, c4 = st.columns(4)
+            traj = results.get("trajectory", {})
+            drift = "—"
+            if len(traj.get("energy_traj", [])) > 1:
+                e = np.asarray(traj["energy_traj"], dtype=float)
+                denom = abs(e[0]) if e[0] != 0 else 1.0
+                drift = fmt(np.max(np.abs((e - e[0]) / denom)), 3)
+            c1, c2, c3, c4, c5, c6 = st.columns(6)
             c1.metric("Atoms", int(meta["N"]))
             c2.metric("Mean T (K)", fmt(summary.get("mean_temperature")))
-            c3.metric("CN", fmt(summary.get("coordination_number")))
-            c4.metric("D MSD", fmt(summary.get("D_msd")))
+            c3.metric("Mean P", fmt(summary.get("mean_pressure")))
+            c4.metric("CN", fmt(summary.get("coordination_number")))
+            c5.metric("D MSD", fmt(summary.get("D_msd")))
+            c6.metric("Max ΔE/E₀", drift)
             rows = [{"quantity": key, "value": fmt(value, 6)} for key, value in summary.items()]
             st.dataframe(rows, width="stretch", hide_index=True)
             if "trajectory" in results:
@@ -868,7 +1029,9 @@ elif mode == "Validation":
                 c2.metric("Total", n_total)
                 c3.metric("Overall", "PASS" if n_passed == n_total else "FAIL")
 
-                st.dataframe(status_rows, width="stretch", hide_index=True)
+                for row in status_rows:
+                    icon = "✅" if row["status"] == "PASS" else "❌"
+                    st.markdown(f"{icon} **{row['test'].replace('_', ' ').title()}** — {row['status']}")
 
                 st.divider()
                 st.code(report, language="text")
