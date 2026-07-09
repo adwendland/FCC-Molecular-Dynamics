@@ -1,5 +1,5 @@
 # streamlit_app.py
-# FCC Molecular Dynamics – polished Streamlit workbench
+# FCC Molecular Dynamics
 
 from __future__ import annotations
 
@@ -559,22 +559,83 @@ def plot_validation(results: dict[str, Any], choice: str):
     return fig
 
 
+def _performance_subtitle_from_results(results: dict[str, Any], detail: str = "") -> str:
+    meta = results.get("metadata", {})
+
+    metal = meta.get("metal", "")
+    backend = meta.get("backend", meta.get("backend_label", "auto"))
+    dt = meta.get("dt", None)
+
+    parts = []
+    if metal:
+        parts.append(str(metal))
+    if backend:
+        backend_text = str(backend)
+        if backend_text.lower() == "auto":
+            backend_text = "Auto backend"
+        elif backend_text.lower() in ("cpp", "c++", "pybind11"):
+            backend_text = "C++ backend"
+        elif backend_text.lower() == "python":
+            backend_text = "Python backend"
+        else:
+            backend_text = f"{backend_text} backend"
+        parts.append(backend_text)
+    if dt is not None:
+        parts.append(f"dt={float(dt):g} fs")
+    if detail:
+        parts.append(detail)
+
+    return " | ".join(parts)
+
+
 def plot_performance(results: dict[str, Any], choice: str):
     cases = results.get("cases", [])
+    if not cases:
+        return _no_data_figure(f"No performance cases available for {choice}.")
+
     labels = [f"{c['metadata']['nx']}x{c['metadata']['ny']}x{c['metadata']['nz']}" for c in cases]
 
     if choice == "Performance scaling":
         y = [c["integrator_nve"]["atom_steps_per_second"] for c in cases]
-        fig, ax = _mpl_figure("Performance Scaling", "System size", "Atom-steps / s", f"{results.get('metadata', {}).get('metal', "")} | backend={results.get('metadata', {}).get('backend', "auto")}")
-        ax.plot(labels, y, marker="o", linewidth=1.8)
+        subtitle = _performance_subtitle_from_results(
+            results,
+            "NVE Runtime Scaling",
+        )
+        fig, ax = _mpl_figure(
+            "Performance Scaling",
+            "System size",
+            "Atom-steps / s",
+            subtitle,
+        )
+        ax.plot(labels, y, marker="o", linewidth=1.9)
         ax.tick_params(axis="x", rotation=25)
+
+        # Annotate the largest benchmark for README screenshots.
+        if len(labels) and len(y):
+            ax.annotate(
+                fmt(y[-1], 3),
+                xy=(labels[-1], y[-1]),
+                xytext=(0, 8),
+                textcoords="offset points",
+                ha="center",
+                fontsize=8.5,
+            )
 
     elif choice == "Kernel timing":
         x = np.arange(len(labels))
         width = 0.35
         neighbor = [1000 * c["neighbor_build"]["mean_seconds"] for c in cases]
         force = [1000 * c["force_evaluation"]["mean_seconds"] for c in cases]
-        fig, ax = _mpl_figure("Kernel Timing", "System size", "Time (ms)", f"{results.get('metadata', {}).get('metal', "")} | neighbor-list build vs force evaluation")
+        subtitle = _performance_subtitle_from_results(
+            results,
+            "Neighbor-List Build vs Force Evaluation",
+        )
+        fig, ax = _mpl_figure(
+            "Kernel Timing",
+            "System size",
+            "Time (ms)",
+            subtitle,
+        )
         ax.bar(x - width / 2, neighbor, width, label="Neighbor list")
         ax.bar(x + width / 2, force, width, label="Force")
         ax.set_xticks(x)
@@ -928,10 +989,10 @@ if mode == "Simulation / Analysis":
                 drift = fmt(np.max(np.abs((e - e[0]) / denom)), 3)
             c1, c2, c3, c4, c5, c6 = st.columns(6)
             c1.metric("Atoms", int(meta["N"]))
-            c2.metric("Mean T (K)", fmt(summary.get("mean_temperature")))
-            c3.metric("Mean P", fmt(summary.get("mean_pressure")))
-            c4.metric("CN", fmt(summary.get("coordination_number")))
-            c5.metric("D MSD", fmt(summary.get("D_msd")))
+            c2.metric("Mean T (K)", f"{summary.get('mean_temperature', 0):.1f}")
+            c3.metric("Mean P", f"{summary.get('mean_pressure', 0):.1f}")
+            c4.metric("CN", f"{summary.get('coordination_number', 0):.1f}")
+            c5.metric("D MSD", f"{summary.get('D_msd', 0):.1e}")
             c6.metric("Max ΔE/E₀", drift)
             rows = [{"quantity": key, "value": fmt(value, 6)} for key, value in summary.items()]
             st.dataframe(rows, width="stretch", hide_index=True)
