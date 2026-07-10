@@ -236,7 +236,9 @@ python gui.py
 ## Terminal
 
 ```bash
-python main.py
+python run_analysis.py
+python run_validation.py
+python run_performance.py
 ```
 
 ---

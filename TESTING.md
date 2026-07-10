@@ -1,6 +1,6 @@
 # Testing guide
 
-This project uses **pytest** for automated tests and **GitHub Actions** for continuous integration.
+This project uses pytest for automated tests and Github Actions for continuous integration.
 
 ## Run the suite
 
