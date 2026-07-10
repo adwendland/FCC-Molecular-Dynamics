@@ -1,7 +1,5 @@
 # FCC Molecular Dynamics Simulator
 
-![FCC Molecular Dynamics Simulator Streamlit Web App Dashboard](screenshots/img_streamlit_dashboard.png)
-
 ![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 ![Scientific Computing](https://img.shields.io/badge/Scientific-Computing-orange.svg)
@@ -12,6 +10,8 @@ A modular molecular dynamics simulator for face-centered cubic (FCC) metals writ
 This project implements classical molecular dynamics using 12-6 Lennard–Jones potentials together with modern scientific software practices including automated analysis tools, validation routines, performance benchmarking, interactive visualization, as well as a local and web-based user interface.
 
 Designed as a scientific computing portfolio project demonstrating numerical methods, molecular dynamics, computational materials science, verification and validation, performance benchmarking, and scientific software engineering.
+
+![FCC Molecular Dynamics Simulator Streamlit Web App Dashboard](screenshots/img_streamlit_dashboard.png)
 
 ## Highlights
 
@@ -106,6 +106,21 @@ Benchmark tools measure:
 - OVITO-compatible trajectories
 
 ![Interactive 3D atomic visualization in Streamlit](screenshots/img_atom_vis.png)
+
+---
+
+## Automated testing
+
+The repository includes a comprehensive pytest suite covering the numerical core, analysis routines, scientific-validation helpers, and short end-to-end MD smoke tests. GitHub Actions runs the suite on Python 3.11, 3.12, and 3.13 for every push and pull request.
+
+```bash
+python -m pip install -r requirements-dev.txt
+python -m pip install -e .
+python -m pytest
+python -m pytest --cov=md --cov-report=term-missing
+```
+
+See [`TESTING.md`](TESTING.md) for the test structure, markers, coverage commands, and guidance for adding new tests.
 
 ---
 

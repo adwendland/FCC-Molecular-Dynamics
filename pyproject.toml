@@ -9,6 +9,9 @@ build-backend = "setuptools.build_meta"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra --strict-markers"
+markers = [
+    "scientific: short end-to-end scientific smoke tests",
+]
 
 [tool.coverage.run]
 source = ["md"]
