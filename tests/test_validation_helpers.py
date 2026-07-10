@@ -5,11 +5,13 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-import md.validation.convergence as convergence
-import md.validation.energy as energy
-import md.validation.momentum as momentum
-import md.validation.structure as structure
-import md.validation.thermostat as thermostat
+from md.validation import (
+    convergence,
+    energy,
+    momentum,
+    structure,
+    thermostat,
+)
 
 
 class FakeEnergySystem:
