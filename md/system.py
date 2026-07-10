@@ -103,8 +103,10 @@ class System:
         return self.kinetic_energy
 
     def update_energies(self):
-        self.kinetic_energy =  0.5 * self.mass * np.sum(self.vel**2)
+        """Update kinetic and total energy for scalar or per-particle masses."""
+        self.update_kinetic_energy()
         self.total_energy = self.kinetic_energy + self.potential_energy
+        return self.total_energy
 
 
     # --- Temperature ---

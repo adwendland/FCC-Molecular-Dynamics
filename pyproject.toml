@@ -1,0 +1,16 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+
+[tool.coverage.run]
+source = ["md"]
+omit = [
+    "md/plotting.py",
+    "md/plot_analysis.py",
+    "md/viz.py",
+    "md/performance/*",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
