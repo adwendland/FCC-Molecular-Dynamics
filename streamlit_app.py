@@ -447,11 +447,70 @@ def plot_analysis(results: dict[str, Any], choice: str):
 def plot_validation(results: dict[str, Any], choice: str):
     if choice == "Energy conservation" and "energy_drift" in results:
         d = results["energy_drift"]
-        y = d.get("rel_drift", d.get("relative_drift", d.get("drift", [])))
-        x = d.get("times", d.get("time", d.get("steps", np.arange(len(_as_array(y))))))
-        fig, ax = _mpl_figure("Energy Conservation", "Time / step", "Relative energy drift", _subtitle_from_results(results))
-        ax.plot(x, y, linewidth=1.8)
-        ax.axhline(0.0, linewidth=1.0, alpha=0.7)
+        y = np.asarray(
+            d.get("rel_drift", d.get("relative_drift", d.get("drift", []))),
+            dtype=float,
+        )
+        x = np.asarray(
+            d.get("times", d.get("time", d.get("steps", np.arange(len(y))))),
+            dtype=float,
+        )
+
+        xlabel = "Time (fs)" if "times" in d or "time" in d else "Step"
+        fig, ax = _mpl_figure(
+            "Energy Conservation",
+            xlabel,
+            "Relative energy drift",
+            _subtitle_from_results(results),
+        )
+
+        if len(x) and len(y):
+            n = min(len(x), len(y))
+            x = x[:n]
+            y = y[:n]
+            ax.plot(x, y, linewidth=1.8, label="Relative energy drift")
+            ax.axhline(0.0, linewidth=1.0, alpha=0.7)
+
+            tolerance = results.get("tolerances", {}).get("energy_drift")
+            if tolerance is not None:
+                tolerance = float(tolerance)
+                ax.axhline(
+                    tolerance,
+                    linestyle="--",
+                    linewidth=1.2,
+                    alpha=0.8,
+                    label=f"Tolerance (±{tolerance:.1e})",
+                )
+                ax.axhline(
+                    -tolerance,
+                    linestyle="--",
+                    linewidth=1.2,
+                    alpha=0.8,
+                )
+
+            finite_y = y[np.isfinite(y)]
+            if finite_y.size:
+                max_drift = float(np.max(np.abs(finite_y)))
+                status = "PASS" if tolerance is not None and max_drift <= tolerance else "FAIL"
+                if tolerance is None:
+                    status = ""
+                annotation = (
+                    r"Max $\left|\frac{\Delta E}{E_0}\right|$"
+                    f" = {max_drift:.3e}"
+                )
+                ax.text(
+                    0.03,
+                    0.05,
+                    annotation,
+                    transform=ax.transAxes,
+                    va="bottom",
+                    ha="left",
+                    bbox=dict(facecolor="white", alpha=0.85, edgecolor="0.8"),
+                )
+
+            ax.legend(frameon=False)
+        else:
+            ax.text(0.5, 0.5, "No energy-drift data", ha="center", va="center", transform=ax.transAxes)
 
     elif choice == "Momentum conservation" and "momentum" in results:
         d = results["momentum"]
@@ -465,23 +524,82 @@ def plot_validation(results: dict[str, Any], choice: str):
         errors = d.get("errors", {})
         if isinstance(errors, dict):
             items = sorted((float(k), float(v)) for k, v in errors.items())
-            dt_vals = np.array([k for k, _ in items])
-            err_vals = np.array([v for _, v in items])
+            dt_vals = np.array([k for k, _ in items], dtype=float)
+            err_vals = np.array([v for _, v in items], dtype=float)
         else:
             dt_vals = np.asarray(d.get("dt_values", []), dtype=float)
             err_vals = np.asarray(errors, dtype=float)
 
-        fig, ax = _mpl_figure("Timestep Convergence", "dt (fs)", "RMS position error (Å)", _convergence_subtitle_from_results(results))
-        if len(dt_vals) and len(err_vals):
+        fig, ax = _mpl_figure(
+            "Timestep Convergence",
+            "Timestep (fs)",
+            "RMS position error (Å)",
+            _convergence_subtitle_from_results(results),
+        )
+
+        valid = (
+            np.isfinite(dt_vals)
+            & np.isfinite(err_vals)
+            & (dt_vals > 0.0)
+            & (err_vals > 0.0)
+        )
+        dt_vals = dt_vals[valid]
+        err_vals = err_vals[valid]
+
+        if len(dt_vals):
+            order_idx = np.argsort(dt_vals)
+            dt_vals = dt_vals[order_idx]
+            err_vals = err_vals[order_idx]
+
+            ax.loglog(
+                dt_vals,
+                err_vals,
+                marker="o",
+                markersize=6,
+                linewidth=2.0,
+                label="Measured error",
+            )
+
+            # Anchor both guide lines at the finest-step measured error.
+            dt_ref = dt_vals[0]
+            err_ref = err_vals[0]
+            ax.loglog(
+                dt_vals,
+                err_ref * (dt_vals / dt_ref),
+                linestyle="--",
+                linewidth=1.3,
+                label=r"$\mathcal{O}(\Delta t)$ reference",
+            )
+            ax.loglog(
+                dt_vals,
+                err_ref * (dt_vals / dt_ref) ** 2,
+                linestyle="--",
+                linewidth=1.3,
+                label=r"$\mathcal{O}(\Delta t^2)$ reference",
+            )
+
             order = d.get("order")
-            label = "Position error" if order is None else f"Position error, order ≈ {float(order):.2f}"
-            ax.loglog(dt_vals, err_vals, marker="o", linewidth=1.8, label=label)
+            if order is not None:
+                try:
+                    order_text = f"Observed order = {float(order):.2f}"
+                except (TypeError, ValueError):
+                    order_text = f"Observed order = {order}"
+                ax.text(
+                    0.03,
+                    0.05,
+                    order_text,
+                    transform=ax.transAxes,
+                    va="bottom",
+                    ha="left",
+                    bbox=dict(facecolor="white", alpha=0.85, edgecolor="0.8"),
+                )
+
             ax.set_xticks(dt_vals)
             ax.set_xticklabels([f"{v:g}" for v in dt_vals])
             ax.invert_xaxis()
             ax.legend(frameon=False)
         else:
-            ax.text(0.5, 0.5, "No convergence data", ha="center", va="center", transform=ax.transAxes)
+            ax.text(0.5, 0.5, "No positive convergence data", ha="center", va="center", transform=ax.transAxes)
 
     elif choice == "Temperature stability" and "temperature_stability" in results:
         d = results["temperature_stability"]
