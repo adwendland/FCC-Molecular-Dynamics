@@ -471,7 +471,7 @@ def print_validation_report(results):
             f"  {'Expected Range':26s}: "
             f"[{tol['convergence_order_min']:.1f}, {tol['convergence_order_max']:.1f}]"
         )
-        print(f"  {'Max Position Error':26s}: {max(r["errors"].values()):.1e}")
+        print(f"  {'Max Position Error':26s}: {max(r['errors'].values()):.1e}")
         print(f"  {'Position Error Tolerance':26s}: {tol['convergence_position_error']:.1e}")
 
         print()
