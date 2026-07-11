@@ -86,11 +86,11 @@ Velocity Verlet was chosen for this simulator because it is symplectic (preservi
 | Unit cells | $5 \times 5 \times 5$ |
 | Number of atoms | 500 |
 | Ensemble | NVE or NVT, depending on the validation test |
-| Target temperature | $300\,\mathrm{K}$ |
-| Time step | $\Delta t = 0.1\,\mathrm{fs}$ |
-| Simulation time | $10\,\mathrm{ps}$ |
+| Target temperature | $300$ K |
+| Time step | $\Delta t = 0.1$ fs$|
+| Simulation time | $10$ ps$|
 | Cutoff radius | $r_c = 2.5\sigma$ |
-| Neighbor-list skin | $0.30\,\text{\AA}$ |
+| Neighbor-list skin | $0.30$ Å |
 
 The NVE ensemble is used for the conservation and timestep-convergence tests, while the NVT ensemble is used to evaluate temperature regulation and equipartition.
 
@@ -204,7 +204,7 @@ Agreement between simulated peak locations and the known FCC coordination shells
 
 **Figure 4.** Radial distribution function of the representative FCC Ni simulation. The peak locations agree closely with the theoretical FCC coordination shell distances.
 
-**Figure 4** shows the radial distribution function for the representative FCC Ni simulation at 300 K. The locations of the major RDF peaks agree closely with the expected FCC coordination shell distances, indicating that the crystal structure is preserved throughout the simulation. In particular, the first-neighbor peak occurs at $2.475\,\text{\AA}$, compared with the theoretical nearest-neighbor spacing of $2.489\,\text{\AA}$, corresponding to a relative error of approximately $0.56\%$. This close agreement provides strong evidence that the force evaluation, periodic boundary conditions, and lattice initialization are implemented correctly [1,2,12].
+**Figure 4** shows the radial distribution function for the representative FCC Ni simulation at 300 K. The locations of the major RDF peaks agree closely with the expected FCC coordination shell distances, indicating that the crystal structure is preserved throughout the simulation. In particular, the first-neighbor peak occurs at $2.475$ Å, compared with the theoretical nearest-neighbor spacing of $2.489$ Å, corresponding to a relative error of approximately $0.56\%$. This close agreement provides strong evidence that the force evaluation, periodic boundary conditions, and lattice initialization are implemented correctly [1,2,12].
 
 ## 4.2 Coordination Number
 
@@ -244,7 +244,7 @@ For NVT simulations, the Berendsen thermostat should regulate the temperature ar
 
 **Figure 6.** Instantaneous temperature during the representative NVT simulation. The Berendsen thermostat maintains the target temperature with only small fluctuations.
 
-**Figure 6** shows the instantaneous temperature during a representative NVT simulation of FCC Ni at 300 K. The Berendsen thermostat maintains the system close to the prescribed target temperature throughout the simulation, with a mean temperature of $300.29\,\mathrm{K}$ and only small statistical fluctuations. No long-term temperature drift is observed, demonstrating that the thermostat provides stable thermal regulation while allowing the system to fluctuate naturally about the desired equilibrium temperature [1,2,6].
+**Figure 6** shows the instantaneous temperature during a representative NVT simulation of FCC Ni at 300 K. The Berendsen thermostat maintains the system close to the prescribed target temperature throughout the simulation, with a mean temperature of $300.29$ K and only small statistical fluctuations. No long-term temperature drift is observed, demonstrating that the thermostat provides stable thermal regulation while allowing the system to fluctuate naturally about the desired equilibrium temperature [1,2,6].
 
 ## 5.2 Equipartition
 
