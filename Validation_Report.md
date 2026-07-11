@@ -26,7 +26,7 @@ The automated validation suite distributed within this project evaluates each of
 Particle trajectories satisfy Newton's second law
 
 ```math
-m_i\frac{d^2\mathbf r_i}{dt^2}=\mathbf F_i,
+m_i\frac{d^2\mathbf {r}_i}{dt^2}=\mathbf {F}_i,
 ```
 
 where the total force on particle $i$ is obtained by summing pairwise interactions.
@@ -55,7 +55,7 @@ The corresponding force is
 -
 \left(\frac{\sigma}{r_{ij}}\right)^6
 \right]
-\frac{\mathbf r_{ij}}{r_{ij}^{2}}.
+\frac{\mathbf {r}_{ij}}{r_{ij}^{2}}.
 ```
 
 Periodic boundary conditions together with the minimum-image convention are employed.
@@ -65,15 +65,15 @@ Periodic boundary conditions together with the minimum-image convention are empl
 Time integration is performed using the Velocity Verlet algorithm [5]
 
 ```math
-\mathbf r^{n+1}
+\mathbf {r}^{n+1}
 =
-\mathbf r^n+\mathbf v^n\Delta t+\frac{1}{2}\mathbf a^n\Delta t^2,
+\mathbf {r}^n+\mathbf {v}^n\Delta t+\frac{1}{2}\mathbf {a}^n\Delta t^2,
 ```
 
 ```math
-\mathbf v^{n+1}
+\mathbf {v}^{n+1}
 =
-\mathbf v^n+\frac{1}{2}(\mathbf a^n+\mathbf a^{n+1})\Delta t.
+\mathbf {v}^n+\frac{1}{2}(\mathbf {a}^n+\mathbf {a}^{n+1})\Delta t.
 ```
 
 Velocity Verlet was chosen for this simulator because it is symplectic (preserving the underlying shadow Hamiltonian), time reversible, and second-order accurate.
