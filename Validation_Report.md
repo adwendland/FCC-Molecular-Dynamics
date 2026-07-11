@@ -104,10 +104,7 @@ The kinetic, potential, and total energies are given by
 
 $$
 K=\sum_{i}\frac{1}{2}m_iv_i^2,\qquad
-U=\sum_{i<j}U(r_{ij}),
-$$
-and 
-$$
+U=\sum_{i<j}U(r_{ij}),\qquad
 E=K+U.
 $$
 
@@ -130,7 +127,7 @@ In an NVE simulation, the total energy should remain nearly constant, exhibiting
 Total linear momentum is
 
 $$
-\mathbf P=\sum_i m_i\mathbf v_i.
+\mathbf P=\sum_{i} m_i\mathbf v_i.
 $$
 
 The normalized momentum drift reported by the validation suite is
@@ -156,8 +153,8 @@ Solutions obtained using progressively refined time steps are compared against t
 $$
 e(\Delta t)=
 \left(
-\frac1N
-\sum_i
+\frac{1}{N}
+\sum_{i}
 \|\mathbf r_i^{\Delta t}-\mathbf r_i^{ref}\|^2
 \right)^{1/2}.
 $$
@@ -195,10 +192,10 @@ The radial distribution function is defined by [12]
 $$
 g(r)=
 \frac{V}{4\pi r^2N^2}
-\left<
+\left\langle
 \sum_{i\ne j}
 \delta(r-r_{ij})
-\right>.
+\right\rangle .
 $$
 
 Agreement between simulated peak locations and the known FCC coordination shells verifies preservation of crystal structure.
@@ -290,8 +287,8 @@ using the virial expression [1,2].
 
 $$
 MSD(t)=
-\frac1N
-\sum_i
+\frac{1}{N}
+\sum_{i}
 |\mathbf r_i(t)-\mathbf r_i(0)|^2.
 $$
 
@@ -311,8 +308,8 @@ $$
 
 $$
 C_v(t)=
-\frac1N
-\sum_i
+\frac{1}{N}
+\sum_{i}
 \mathbf v_i(0)\cdot\mathbf v_i(t).
 $$
 
