@@ -104,7 +104,7 @@ The kinetic, potential, and total energies are given by
 
 ```math
 K=\sum_{i} \frac{1}{2}m_{i}v_{i}^2, \qquad
-U=\sum_{i<j} U(r_{ij}), \qquad
+U=\sum_{i\lt j} U(r_{ij}), \qquad
 E=K+U.
 ```
 
@@ -277,7 +277,7 @@ P=
 \frac{Nk_BT}{V}
 +
 \frac{1}{3V}
-\sum_{i<j}
+\sum_{i \lt j}
 \mathbf{r}_{ij}\cdot\mathbf{F}_{ij},
 ```
 
