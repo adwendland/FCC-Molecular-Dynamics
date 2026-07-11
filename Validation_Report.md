@@ -103,8 +103,8 @@ The NVE ensemble is used for the conservation and timestep-convergence tests, wh
 The kinetic, potential, and total energies are given by
 
 ```math
-K=\sum_{i}\frac{1}{2}m_iv_i^2,\qquad
-U=\sum_{i<j}U(r_{ij}),\qquad
+K=\sum_{i} \frac{1}{2}m_{i}v_{i}^2, \qquad
+U=\sum_{i<j} U(r_{ij}), \qquad
 E=K+U.
 ```
 
@@ -127,14 +127,14 @@ In an NVE simulation, the total energy should remain nearly constant, exhibiting
 Total linear momentum is
 
 ```math
-\mathbf P=\sum_{i} m_i\mathbf v_i.
+\mathbf P=\sum_{i} m_i\mathbf{v}_i.
 ```
 
 The normalized momentum drift reported by the validation suite is
 
 ```math
 \delta P=
-\frac{\|\mathbf P(t)-\mathbf P(0)\|}
+\frac{\|\mathbf {P}(t)-\mathbf {P}(0)\|}
 {\|\mathbf P(0)\|+\varepsilon}.
 ```
 
