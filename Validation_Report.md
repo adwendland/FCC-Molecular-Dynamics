@@ -47,7 +47,7 @@ U(r)=4\varepsilon
 The corresponding force is
 
 ```math
-\mathbf F_{ij}
+\mathbf {F}_{ij}
 =
 24\varepsilon
 \left[
@@ -65,15 +65,15 @@ Periodic boundary conditions together with the minimum-image convention are empl
 Time integration is performed using the Velocity Verlet algorithm [5]
 
 ```math
-\mathbf {r}^{n+1}
+\mathbf{r}^{n+1}
 =
-\mathbf {r}^n+\mathbf {v}^n\Delta t+\frac{1}{2}\mathbf {a}^n\Delta t^2,
+\mathbf{r}^n+\mathbf{v}^n\Delta t+\frac{1}{2}\mathbf {a}^n\Delta t^2,
 ```
 
 ```math
-\mathbf {v}^{n+1}
+\mathbf{v}^{n+1}
 =
-\mathbf {v}^n+\frac{1}{2}(\mathbf {a}^n+\mathbf {a}^{n+1})\Delta t.
+\mathbf{v}^n+\frac{1}{2}(\mathbf{a}^n+\mathbf{a}^{n+1})\Delta t.
 ```
 
 Velocity Verlet was chosen for this simulator because it is symplectic (preserving the underlying shadow Hamiltonian), time reversible, and second-order accurate.
@@ -127,15 +127,15 @@ In an NVE simulation, the total energy should remain nearly constant, exhibiting
 Total linear momentum is
 
 ```math
-\mathbf P=\sum_{i} m_i\mathbf{v}_i.
+\mathbf{P}=\sum_{i} m_i\mathbf{v}_i.
 ```
 
 The normalized momentum drift reported by the validation suite is
 
 ```math
 \delta P=
-\frac{\|\mathbf {P}(t)-\mathbf {P}(0)\|}
-{\|\mathbf P(0)\|+\varepsilon}.
+\frac{\|\mathbf{P}(t)-\mathbf{P}(0)\|}
+{\|\mathbf{P}(0)\|+\varepsilon}.
 ```
 
 Conservation of total linear momentum verifies Newton's third law and the correctness of the pairwise force implementation [1,3].
@@ -155,7 +155,7 @@ e(\Delta t)=
 \left(
 \frac{1}{N}
 \sum_{i}
-\|\mathbf r_i^{\Delta t}-\mathbf r_i^{ref}\|^2
+\|\mathbf{r}_i^{\Delta t}-\mathbf{r}_i^{ref}\|^2
 \right)^{1/2}.
 ```
 
@@ -278,7 +278,7 @@ P=
 +
 \frac{1}{3V}
 \sum_{i<j}
-\mathbf r_{ij}\cdot\mathbf F_{ij},
+\mathbf{r}_{ij}\cdot\mathbf{F}_{ij},
 ```
 
 using the virial expression [1,2].
@@ -289,7 +289,7 @@ using the virial expression [1,2].
 MSD(t)=
 \frac{1}{N}
 \sum_{i}
-|\mathbf r_i(t)-\mathbf r_i(0)|^2.
+|\mathbf{r}_i(t)-\mathbf{r}_i(0)|^2.
 ```
 
 ### Diffusion Coefficient
@@ -310,17 +310,17 @@ D=\frac{1}{3}\int_0^\infty C_v(t)\,dt.
 C_v(t)=
 \frac{1}{N}
 \sum_{i}
-\mathbf v_i(0)\cdot\mathbf v_i(t).
+\mathbf{v}_i(0)\cdot\mathbf{v}_i(t).
 ```
 
 ### Static Structure Factor
 
 ```math
-S(\mathbf k)=
+S(\mathbf{k})=
 \frac{1}{N}
 \left|
 \sum_j
-e^{-i\mathbf k\cdot\mathbf r_j}
+e^{-i\mathbf{k}\cdot\mathbf{r}_j}
 \right|^2.
 ```
 

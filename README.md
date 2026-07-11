@@ -135,7 +135,7 @@ Current parameter sets are provided for 8 FCC metals: Ag, Al, Au, Cu, Ni, Pb, Pd
 The simulator integrates Newton's equations of motion
 
 ```math
-m_{i}\frac{d^2\mathbf r_{i}}{dt^2}=\mathbf F_{i}
+m_{i}\frac{d^2\mathbf {r}_{i}}{dt^2}=\mathbf {F}_{i}
 ```
 
 using Velocity-Verlet time integration [2] and standard molecular dynamics algorithms described in [3,4].
