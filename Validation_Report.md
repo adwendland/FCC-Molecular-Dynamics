@@ -67,13 +67,13 @@ Time integration is performed using the Velocity Verlet algorithm [5]
 $$
 \mathbf r^{n+1}
 =
-\mathbf r^n+\mathbf v^n\Delta t+\frac12\mathbf a^n\Delta t^2,
+\mathbf r^n+\mathbf v^n\Delta t+\frac{1}{2}\mathbf a^n\Delta t^2,
 $$
 
 $$
 \mathbf v^{n+1}
 =
-\mathbf v^n+\frac12(\mathbf a^n+\mathbf a^{n+1})\Delta t.
+\mathbf v^n+\frac{1}{2}(\mathbf a^n+\mathbf a^{n+1})\Delta t.
 $$
 
 Velocity Verlet was chosen for this simulator because it is symplectic (preserving the underlying shadow Hamiltonian), time reversible, and second-order accurate.
@@ -103,7 +103,7 @@ The NVE ensemble is used for the conservation and timestep-convergence tests, wh
 The kinetic, potential, and total energies are given by
 
 $$
-K=\sum_i\frac12m_iv_i^2,\qquad
+K=\sum_{i}\frac{1}{2}m_iv_i^2,\qquad
 U=\sum_{i<j}U(r_{ij}),
 $$
 and 
@@ -279,7 +279,7 @@ $$
 P=
 \frac{Nk_BT}{V}
 +
-\frac1{3V}
+\frac{1}{3V}
 \sum_{i<j}
 \mathbf r_{ij}\cdot\mathbf F_{ij},
 $$
@@ -304,7 +304,7 @@ $$
 or equivalently through the Green–Kubo relation [10,11],
 
 $$
-D=\frac13\int_0^\infty C_v(t)\,dt.
+D=\frac{1}{3}\int_0^\infty C_v(t)\,dt.
 $$
 
 ### Velocity Autocorrelation Function
@@ -320,7 +320,7 @@ $$
 
 $$
 S(\mathbf k)=
-\frac1N
+\frac{1}{N}
 \left|
 \sum_j
 e^{-i\mathbf k\cdot\mathbf r_j}
