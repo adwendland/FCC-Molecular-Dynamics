@@ -316,7 +316,7 @@ D=\frac{1}{3}\int_0^\infty C_v(t)\,dt.
 ### Velocity Autocorrelation Function
 
 ```math
-C_{VV}(t)=
+C_{\mathrm{vv}}(t)=
 \frac{1}{N}
 \sum_{i}
 \mathbf{v}_i(0)\cdot\mathbf{v}_i(t).
