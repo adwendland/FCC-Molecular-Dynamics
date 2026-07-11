@@ -134,22 +134,22 @@ Current parameter sets are provided for 8 FCC metals: Ag, Al, Au, Cu, Ni, Pb, Pd
 
 The simulator integrates Newton's equations of motion
 
-\[
+$$
 m_i\frac{d^2\mathbf r_i}{dt^2}=\mathbf F_i
-\]
+$$
 
 using Velocity-Verlet time integration [2] and standard molecular dynamics algorithms described in [3,4].
 
 Interatomic forces are computed from the 12–6 Lennard–Jones potential
 
-\[
+$$
 U(r)=4\epsilon
 \left[
 \left(\frac{\sigma}{r}\right)^{12}
 -
 \left(\frac{\sigma}{r}\right)^6
 \right].
-\]
+$$
 
 Implemented algorithms include:
 
