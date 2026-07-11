@@ -13,9 +13,14 @@ This report documents the numerical and physical validation of the FCC Molecular
 
 # 1. Introduction
 
-Scientific simulation software must demonstrate both numerical correctness and physical accuracy before simulation results can be trusted. In molecular dynamics, validation commonly consists of verifying conservation laws, expected numerical convergence rates, structural observables, and thermodynamic behavior [1,2].
+Scientific simulation software should demonstrate numerical correctness,
+internal consistency, and agreement with expected physical behavior before
+its results can be interpreted with confidence. In molecular dynamics, validation commonly consists of verifying conservation laws, expected numerical convergence rates, structural observables, and thermodynamic behavior [1,2].
 
-The automated validation suite distributed within this project evaluates each of these properties independently. The selected validation tests are consistent with those commonly employed in modern molecular dynamics software packages and the scientific literature [1–3,7]. Representative results throughout this report correspond to FCC Ni at 300 K. The complete validation suite was also executed for Ag, Al, Au, Cu, Pb, Pd, and Pt using the default simulation parameters, and all validation tests passed. Representative simulations required approximately 32 minutes on a single desktop CPU. Validation results for all supported FCC metals are included in the repository under `outputs/validation/`.
+The automated validation suite distributed within this project evaluates each of these properties independently. The selected validation tests are consistent with those commonly employed in modern molecular dynamics software packages and the scientific literature [1–3,7]. Representative results throughout this report correspond to FCC Ni at 300 K. The complete validation suite was also executed for Ag, Al, Au, Cu, Pb,
+Pd, and Pt using the default metal-specific parameters. All configured
+validation criteria passed; the complete machine-generated outputs are
+available under `outputs/validation/`.
 
 ---
 
@@ -76,7 +81,9 @@ Time integration is performed using the Velocity Verlet algorithm [5]
 \mathbf{v}^n+\frac{1}{2}(\mathbf{a}^n+\mathbf{a}^{n+1})\Delta t.
 ```
 
-Velocity Verlet was chosen for this simulator because it is symplectic (preserving the underlying shadow Hamiltonian), time reversible, and second-order accurate.
+Velocity Verlet was selected because it is time reversible,
+second-order accurate, and exhibits the bounded long-time energy behavior
+characteristic of symplectic integration.
 
 ## 2.4 Representative Simulation Parameters
 
@@ -87,8 +94,8 @@ Velocity Verlet was chosen for this simulator because it is symplectic (preservi
 | Number of atoms | 500 |
 | Ensemble | NVE or NVT, depending on the validation test |
 | Target temperature | $300$ K |
-| Time step | $\Delta t = 0.1$ fs$|
-| Simulation time | $10$ ps$|
+| Time step | $\Delta t = 0.1$ fs|
+| Simulation time | $10$ ps|
 | Cutoff radius | $r_c = 2.5\sigma$ |
 | Neighbor-list skin | $0.30$ Å |
 
@@ -240,11 +247,13 @@ T=\frac{2K}{3Nk_B},
 
 For NVT simulations, the Berendsen thermostat should regulate the temperature around the prescribed target value [6].
 
-![Figure 6. Temperature regulation.](screenshots/Ni_temperature_stability.png)
+![Figure 5. Temperature regulation.](screenshots/Ni_temperature_stability.png)
 
-**Figure 6.** Instantaneous temperature during the representative NVT simulation. The Berendsen thermostat maintains the target temperature with only small fluctuations.
+**Figure 5.** Instantaneous temperature during the representative NVT simulation. The Berendsen thermostat maintains the target temperature with only small fluctuations.
 
-**Figure 6** shows the instantaneous temperature during a representative NVT simulation of FCC Ni at 300 K. The Berendsen thermostat maintains the system close to the prescribed target temperature throughout the simulation, with a mean temperature of $300.29$ K and only small statistical fluctuations. No long-term temperature drift is observed, demonstrating that the thermostat provides stable thermal regulation while allowing the system to fluctuate naturally about the desired equilibrium temperature [1,2,6].
+**Figure 5** shows the instantaneous temperature during a representative NVT simulation of FCC Ni at 300 K. The Berendsen thermostat maintains the system close to the prescribed target temperature throughout the simulation, with a mean temperature of $300.29$ K and only small statistical fluctuations. No long-term temperature drift is observed, demonstrating that the
+thermostat provides stable regulation about the prescribed target
+temperature [1,2,6].
 
 ## 5.2 Equipartition
 
@@ -258,11 +267,11 @@ According to the equipartition theorem [9],
 
 Agreement between the three kinetic-energy components indicates statistically isotropic thermal motion.
 
-![Figure 7. Equipartition.](screenshots/Ni_component_equipartition.png)
+![Figure 6. Equipartition.](screenshots/Ni_component_equipartition.png)
 
-**Figure 7.** Mean kinetic energy associated with each Cartesian component. The three components are nearly identical, consistent with the equipartition theorem.
+**Figure 6.** Mean kinetic energy associated with each Cartesian component. The three components are nearly identical, consistent with the equipartition theorem.
 
-**Figure 7** compares the average kinetic energy associated with the three Cartesian directions. The kinetic energy remains nearly equally distributed among the $x$-, $y$-, and $z$-components throughout the simulation, with a maximum deviation of approximately $0.91\%$. This agreement is consistent with the equipartition theorem and indicates that the system exhibits statistically isotropic thermal motion without directional bias [1,2,9].
+**Figure 6** compares the average kinetic energy associated with the three Cartesian directions. The kinetic energy remains nearly equally distributed among the $x$-, $y$-, and $z$-components throughout the simulation, with a maximum deviation of approximately $0.91\%$. This agreement is consistent with the equipartition theorem and indicates that the system exhibits statistically isotropic thermal motion without directional bias [1,2,9].
 
 ---
 
@@ -307,7 +316,7 @@ D=\frac{1}{3}\int_0^\infty C_v(t)\,dt.
 ### Velocity Autocorrelation Function
 
 ```math
-C_v(t)=
+C_{VV}(t)=
 \frac{1}{N}
 \sum_{i}
 \mathbf{v}_i(0)\cdot\mathbf{v}_i(t).
