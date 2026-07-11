@@ -25,9 +25,9 @@ The automated validation suite distributed within this project evaluates each of
 
 Particle trajectories satisfy Newton's second law
 
-$$
+```math
 m_i\frac{d^2\mathbf r_i}{dt^2}=\mathbf F_i,
-$$
+```
 
 where the total force on particle $i$ is obtained by summing pairwise interactions.
 
@@ -35,18 +35,18 @@ where the total force on particle $i$ is obtained by summing pairwise interactio
 
 Atoms interact through the 12–6 Lennard–Jones potential [1–4]
 
-$$
+```math
 U(r)=4\varepsilon
 \left[
 \left(\frac{\sigma}{r}\right)^{12}
 -
 \left(\frac{\sigma}{r}\right)^6
 \right].
-$$
+```
 
 The corresponding force is
 
-$$
+```math
 \mathbf F_{ij}
 =
 24\varepsilon
@@ -56,7 +56,7 @@ $$
 \left(\frac{\sigma}{r_{ij}}\right)^6
 \right]
 \frac{\mathbf r_{ij}}{r_{ij}^{2}}.
-$$
+```
 
 Periodic boundary conditions together with the minimum-image convention are employed.
 
@@ -64,17 +64,17 @@ Periodic boundary conditions together with the minimum-image convention are empl
 
 Time integration is performed using the Velocity Verlet algorithm [5]
 
-$$
+```math
 \mathbf r^{n+1}
 =
 \mathbf r^n+\mathbf v^n\Delta t+\frac{1}{2}\mathbf a^n\Delta t^2,
-$$
+```
 
-$$
+```math
 \mathbf v^{n+1}
 =
 \mathbf v^n+\frac{1}{2}(\mathbf a^n+\mathbf a^{n+1})\Delta t.
-$$
+```
 
 Velocity Verlet was chosen for this simulator because it is symplectic (preserving the underlying shadow Hamiltonian), time reversible, and second-order accurate.
 
@@ -102,17 +102,17 @@ The NVE ensemble is used for the conservation and timestep-convergence tests, wh
 
 The kinetic, potential, and total energies are given by
 
-$$
+```math
 K=\sum_{i}\frac{1}{2}m_iv_i^2,\qquad
 U=\sum_{i<j}U(r_{ij}),\qquad
 E=K+U.
-$$
+```
 
 The reported validation metric is the relative energy drift
 
-$$
+```math
 \delta E(t)=\frac{|E(t)-E(0)|}{|E(0)|}.
-$$
+```
 
 In an NVE simulation, the total energy should remain nearly constant, exhibiting only bounded oscillations arising from numerical integration [1,5]. This means that $\delta E(t)$ should remain close to zero for long-time NVE runs.
 
@@ -126,17 +126,17 @@ In an NVE simulation, the total energy should remain nearly constant, exhibiting
 
 Total linear momentum is
 
-$$
+```math
 \mathbf P=\sum_{i} m_i\mathbf v_i.
-$$
+```
 
 The normalized momentum drift reported by the validation suite is
 
-$$
+```math
 \delta P=
 \frac{\|\mathbf P(t)-\mathbf P(0)\|}
 {\|\mathbf P(0)\|+\varepsilon}.
-$$
+```
 
 Conservation of total linear momentum verifies Newton's third law and the correctness of the pairwise force implementation [1,3].
 
@@ -150,28 +150,28 @@ Conservation of total linear momentum verifies Newton's third law and the correc
 
 Solutions obtained using progressively refined time steps are compared against the finest-resolution simulation.
 
-$$
+```math
 e(\Delta t)=
 \left(
 \frac{1}{N}
 \sum_{i}
 \|\mathbf r_i^{\Delta t}-\mathbf r_i^{ref}\|^2
 \right)^{1/2}.
-$$
+```
 
 The observed convergence order is
 
-$$
+```math
 p=
 \frac{\log(e_1/e_2)}
 {\log(\Delta t_1/\Delta t_2)}.
-$$
+```
 
 For Velocity Verlet,
 
-$$
+```math
 e(\Delta t)=O(\Delta t^2)
-$$
+```
 
 is expected theoretically [5].
 
@@ -189,14 +189,14 @@ is expected theoretically [5].
 
 The radial distribution function is defined by [12]
 
-$$
+```math
 g(r)=
 \frac{V}{4\pi r^2N^2}
 \left\langle
 \sum_{i\ne j}
 \delta(r-r_{ij})
 \right\rangle .
-$$
+```
 
 Agreement between simulated peak locations and the known FCC coordination shells verifies preservation of crystal structure.
 
@@ -210,17 +210,17 @@ Agreement between simulated peak locations and the known FCC coordination shells
 
 The coordination number is computed by integrating the RDF:
 
-$$
+```math
 CN=
 4\pi\rho
 \int_0^{r_{min}}g(r)r^2dr.
-$$
+```
 
 For an ideal FCC lattice,
 
-$$
+```math
 CN=12.
-$$
+```
 
 Integrating the radial distribution function up to its first minimum gives a coordination number of $CN=12.000$, in exact agreement with the ideal FCC coordination number. The first minimum of the radial distribution is taken as the upper integration limit as this separates the first coordination shell from the surrounding neighbors [12]. This result confirms that each atom retains the expected twelve nearest neighbors and provides an additional structural validation of the crystalline lattice throughout the simulation [1,12].
 
@@ -232,9 +232,9 @@ Integrating the radial distribution function up to its first minimum gives a coo
 
 Instantaneous temperature is computed from the kinetic energy:
 
-$$
+```math
 T=\frac{2K}{3Nk_B},
-$$
+```
 
 (or the appropriate corrected degrees of freedom after removal of center-of-mass motion).
 
@@ -250,11 +250,11 @@ For NVT simulations, the Berendsen thermostat should regulate the temperature ar
 
 According to the equipartition theorem [9],
 
-$$
+```math
 \langle K_x\rangle=
 \langle K_y\rangle=
 \langle K_z\rangle.
-$$
+```
 
 Agreement between the three kinetic-energy components indicates statistically isotropic thermal motion.
 
@@ -272,65 +272,65 @@ Although these quantities are not used directly as validation criteria, they pro
 
 ### Pressure
 
-$$
+```math
 P=
 \frac{Nk_BT}{V}
 +
 \frac{1}{3V}
 \sum_{i<j}
 \mathbf r_{ij}\cdot\mathbf F_{ij},
-$$
+```
 
 using the virial expression [1,2].
 
 ### Mean Squared Displacement
 
-$$
+```math
 MSD(t)=
 \frac{1}{N}
 \sum_{i}
 |\mathbf r_i(t)-\mathbf r_i(0)|^2.
-$$
+```
 
 ### Diffusion Coefficient
 
-$$
+```math
 D=\lim_{t\rightarrow\infty}\frac{MSD(t)}{6t},
-$$
+```
 
 or equivalently through the Green–Kubo relation [10,11],
 
-$$
+```math
 D=\frac{1}{3}\int_0^\infty C_v(t)\,dt.
-$$
+```
 
 ### Velocity Autocorrelation Function
 
-$$
+```math
 C_v(t)=
 \frac{1}{N}
 \sum_{i}
 \mathbf v_i(0)\cdot\mathbf v_i(t).
-$$
+```
 
 ### Static Structure Factor
 
-$$
+```math
 S(\mathbf k)=
 \frac{1}{N}
 \left|
 \sum_j
 e^{-i\mathbf k\cdot\mathbf r_j}
 \right|^2.
-$$
+```
 
 ### Heat Capacity
 
-$$
+```math
 C_V=
 \frac{\langle E^2\rangle-\langle E\rangle^2}
 {k_BT^2}.
-$$
+```
 
 ---
 
