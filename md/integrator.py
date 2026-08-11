@@ -33,8 +33,8 @@ def velocity_verlet(system, dt, epsilon=1.0, sigma=1.0, rcut=2.5):
         # Ensure int64 for C++
         pairs64 = pairs.astype(np.int64, copy=False)
 
-        # Call C++ function: updates pos, vel, force in-place
-        pe_new = md_cpp.velocity_verlet_lj_cpp(
+        # Call C++ function: updates pos, vel, and force in-place
+        pe_new, virial_new = md_cpp.velocity_verlet_lj_cpp(
             system.pos,
             system.vel,
             system.force,
@@ -48,6 +48,7 @@ def velocity_verlet(system, dt, epsilon=1.0, sigma=1.0, rcut=2.5):
         )
 
         system.potential_energy = float(pe_new)
+        system.virial = float(virial_new)
         system.update_energies()
         return
     

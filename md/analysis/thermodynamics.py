@@ -6,24 +6,21 @@ kB = 8.617333262145e-5
 
 def compute_pressure(system):
     """
-    Instantaneous pressure from virial:
+    Instantaneous virial pressure in eV/Å^3.
 
-    P = (2K + sum_i r_i · F_i) / (3V)
+    P = (2K + W) / (3V),
 
-    where:
-        K = kinetic energy (eV)
-        r_i, F_i in Å and eV/Å
-        V = volume in Å^3
-
-    Units: eV/Å^3 
+    where W = sum_{i<j} r_ij · F_ij.
     """
-    V = system.volume()                    # Å^3
-    system.update_kinetic_energy()
-    K = system.kinetic_energy          # eV
-    virial = np.sum(system.pos * system.force)  # sum_i r_i · F_i, units eV
+    V = system.volume()
+    if V <= 0.0:
+        return 0.0
 
-    P = (2.0 * K + virial) / (3.0 * V)     # eV/Å^3
-    return P
+    system.update_kinetic_energy()
+    K = system.kinetic_energy
+    virial = getattr(system, "virial", 0.0)
+
+    return (2.0 * K + virial) / (3.0 * V)
 
 
 def compute_heat_capacity_from_energy(E_series, T):

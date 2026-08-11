@@ -12,7 +12,7 @@ Ensemble                    : NVE
 Target temperature          : 300.00 K
 Production time step        : 0.1000 fs
 Simulation time             : 10000.0000 fs (10.0000 ps)
-Wall runtime                : 6.29 min
+Wall runtime                : 7.17 min
 Equilibration steps         : 20000
 Production steps            : 100000
 Samples                     : 201
@@ -23,8 +23,8 @@ Thermodynamics
 ----------------------------------------------------------
 Mean Temperature            : 305.9267 K
 Std Temperature             : 9.3200 K
-Mean Pressure               : 2.805967e-02 eV/Å³
-Std Pressure                : 4.765047e-03 eV/Å³
+Mean Pressure               : 1.702094e-02 eV/Å³
+Std Pressure                : 4.951975e-04 eV/Å³
 Mean Total Energy           : -7.880122e+02 eV
 Std Total Energy            : 1.183397e-01 eV
 
@@ -49,8 +49,13 @@ MSD slope                   : -8.147550e-08 Å²/fs
 D from VACF                 : 1.247778e-06 Å²/fs
 VACF integral               : 3.743335e-06
 
+Fluctuation Quantities
+----------------------------------------------------------
+Heat Capacity Cv            : 1.736415e-03 eV/K
+Mean T used for Cv          : 305.9267 K
+
 Output
 ----------------------------------------------------------
-Analyses requested          : coordination_number, diffusion_msd, diffusion_vacf, msd, rdf, structure_factor, thermo, vacf
+Analyses requested          : coordination_number, diffusion_msd, diffusion_vacf, heat_capacity, msd, rdf, structure_factor, thermo, vacf
 ==========================================================
 

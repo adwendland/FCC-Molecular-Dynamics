@@ -12,7 +12,7 @@ Ensemble                    : NVE
 Target temperature          : 2000.00 K
 Production time step        : 0.1000 fs
 Simulation time             : 10000.0000 fs (10.0000 ps)
-Wall runtime                : 14.76 min
+Wall runtime                : 14.94 min
 Equilibration steps         : 20000
 Production steps            : 100000
 Samples                     : 201
@@ -23,8 +23,8 @@ Thermodynamics
 ----------------------------------------------------------
 Mean Temperature            : 2002.6003 K
 Std Temperature             : 55.4278 K
-Mean Pressure               : 9.049474e-02 eV/Å³
-Std Pressure                : 1.397667e-02 eV/Å³
+Mean Pressure               : 1.379464e-01 eV/Å³
+Std Pressure                : 2.978576e-03 eV/Å³
 Mean Total Energy           : -7.358763e+02 eV
 Std Total Energy            : 1.484113e-01 eV
 

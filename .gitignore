@@ -1,0 +1,28 @@
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Compiled extensions
+*.pyd
+*.so
+*.dll
+
+# Local environments
+.venv/
+venv/
+env/
+
+# OS files
+.DS_Store
+Thumbs.db

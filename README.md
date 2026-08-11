@@ -1,149 +1,59 @@
 # FCC Molecular Dynamics Simulator
 
-![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)
+[![Tests](https://github.com/adwendland/FCC-Molecular-Dynamics/actions/workflows/tests.yml/badge.svg)](https://github.com/adwendland/FCC-Molecular-Dynamics/actions/workflows/tests.yml)
+![Python](https://img.shields.io/badge/Python-3.11%2B-blue.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 ![Scientific Computing](https://img.shields.io/badge/Scientific-Computing-orange.svg)
 ![Materials Science](https://img.shields.io/badge/Materials-FCC%20Metals-red.svg)
 
-A modular molecular dynamics simulator for face-centered cubic (FCC) metals written in Python with optional pybind11-based C++ acceleration for force evaluation and time integration.
+A modular molecular dynamics code for face-centered cubic (FCC) metals, written in Python with an optional pybind11/C++ backend for the computational kernels.
 
-This project implements classical molecular dynamics using 12-6 Lennard–Jones potentials together with modern scientific software practices including automated analysis tools, validation routines, performance benchmarking, interactive visualization, as well as a local and web-based user interface.
+The project was built as an end-to-end scientific computing study: construct an FCC crystal, evolve it with classical molecular dynamics, analyze the resulting trajectories, verify the numerical implementation, and benchmark the code. It includes both NVE and NVT simulations, structural and transport analysis, an automated validation suite, interactive visualization, and reproducible performance tests.
 
-Designed as a scientific computing portfolio project demonstrating numerical methods, molecular dynamics, computational materials science, verification and validation, performance benchmarking, and scientific software engineering.
+![FCC Molecular Dynamics Simulator Streamlit dashboard](screenshots/img_streamlit_dashboard.png)
 
-![FCC Molecular Dynamics Simulator Streamlit Web App Dashboard](screenshots/img_streamlit_dashboard.png)
+## What the project demonstrates
 
-## Highlights
+The simulator uses a 12–6 Lennard–Jones model for eight FCC metals: **Ag, Al, Au, Cu, Ni, Pb, Pd, and Pt**. Particle trajectories are integrated with Velocity Verlet under periodic boundary conditions using Verlet neighbor lists, with a Berendsen thermostat available for NVT simulations.
 
-- Hybrid Python/C++ molecular dynamics simulator using pybind11 acceleration
-- Interactive Streamlit web application and desktop GUI
-- Automated analysis, validation, and performance benchmarking suites
-- Publication-quality plots and OVITO-compatible trajectory export
-- Modular architecture designed for computational materials science workflows
+The analysis and validation tools are part of the same package rather than separate post-processing notebooks. A simulation can be followed directly by thermodynamic, structural, and dynamical analysis, or by automated numerical verification.
 
-## Technologies
+Representative results include:
 
-- Python
-- NumPy
-- pybind11 / C++
-- Streamlit
-- Plotly
-- Matplotlib
+- Recovery of the expected FCC first-neighbor distance for all eight metals at 300 K, with the first RDF peak within approximately **0.56%** of $a/\sqrt{2}$.
+- First-shell coordination number **CN = 12.000** for all eight metals at 300 K.
+- Bounded low-temperature MSDs consistent with atoms vibrating about lattice sites.
+- Second-order timestep convergence and stable long-time NVE energy behavior.
+- Temperature sweeps for Cu and Ni showing the coupled loss of crystalline RDF structure and onset of diffusive MSD growth. In the present Lennard–Jones model, Cu changes from solid-like to liquid-like behavior between **4000–6000 K**, while Ni changes between **6000–8000 K**.
 
----
+These high-temperature transition intervals are model-dependent and are not intended as experimental melting-point predictions; they are used to demonstrate that independent structural and dynamical observables identify the same change in physical regime.
 
-# Features
+## Documentation
 
-## Molecular Dynamics
+The repository includes longer technical reports for readers who want more than the README overview.
 
-- Velocity Verlet integrator
-- Verlet neighbor lists
-- NVE (microcanonical) ensemble
-- NVT (Berendsen thermostat)
-- Periodic boundary conditions
-- Minimum image convention
-- Maxwell–Boltzmann velocity initialization
-- Center-of-mass drift removal
-- FCC lattice generation
+| Document | Purpose |
+|---|---|
+| [`Validation_Report.md`](docs/Validation_Report.md) | Numerical and physical verification: conservation laws, convergence, FCC structure, and thermostat behavior |
+| [`Analysis_Report.md`](docs/Analysis_Report.md) | Thermodynamic, structural, and dynamical analysis, including the Cu and Ni temperature sweeps |
+| [`TESTING.md`](TESTING.md) | Test organization, markers, coverage, and instructions for extending the pytest suite |
+
+The LAMMPS comparison is intentionally being developed as a separate study so that external-code comparison remains distinct from the simulator's internal validation.
 
 ---
 
-## Analysis Suite
+## Molecular dynamics model
 
-Automatically computes:
-
-- Temperature
-- Pressure
-- Kinetic Energy
-- Potential Energy
-- Total Energy
-- Radial Distribution Function (RDF)
-- Mean Squared Displacement (MSD)
-- Velocity Autocorrelation Function (VACF)
-- Static Structure Factor S(k)
-- Coordination Number (CN)
-- Diffusion Coefficient (MSD)
-- Diffusion Coefficient (VACF)
-- Heat Capacity (Cv)
-
----
-
-## Validation Suite
-
-Built-in numerical verification & validation including:
-
-- Energy conservation
-- Momentum conservation
-- Equipartition theorem
-- Timestep convergence (Richardson extrapolation)
-- FCC RDF peak validation
-- Coordination number validation
-- Temperature stability
-
-Each validation test automatically generates publication-quality figures together with a pass/fail report.
-
----
-
-## Performance Suite
-
-Benchmark tools measure:
-
-- Neighbor list construction
-- Force computation
-- Velocity Verlet integration
-- Runtime scaling
-- Atom-step throughput
-
----
-
-## Visualization
-
-- Interactive Streamlit web application
-- Desktop GUI
-- Interactive 3D Plotly visualization
-- Publication-quality plots
-- XYZ and NPZ trajectory export
-- OVITO-compatible trajectories
-
-![Interactive 3D atomic visualization in Streamlit](screenshots/img_atom_vis.png)
-
----
-
-## Automated testing
-
-The repository includes a comprehensive pytest suite covering the numerical core, analysis routines, scientific-validation helpers, and short end-to-end MD smoke tests. GitHub Actions runs the suite on Python 3.11, 3.12, and 3.13 for every push and pull request.
-
-```bash
-python -m pip install -r requirements-dev.txt
-python -m pip install -e .
-python -m pytest
-python -m pytest --cov=md --cov-report=term-missing
-```
-
-See [`TESTING.md`](TESTING.md) for the test structure, markers, coverage commands, and guidance for adding new tests.
-
----
-
-# Supported Metals
-
-Current parameter sets are provided for 8 FCC metals: Ag, Al, Au, Cu, Ni, Pb, Pd, and Pt. Lattice constants, atomic masses, and Lennard–Jones parameters taken from Heinz et al. [1].
-
----
-
-# Physics
-
-The simulator integrates Newton's equations of motion
+Particle trajectories satisfy Newton's equations of motion,
 
 ```math
-m_{i}\frac{d^2\mathbf {r}_{i}}{dt^2}=\mathbf {F}_{i}
+m_i \frac{d^2\mathbf r_i}{dt^2} = \mathbf F_i,
 ```
 
-using Velocity-Verlet time integration [2] and standard molecular dynamics algorithms described in [3,4].
-
-Interatomic forces are computed from the 12–6 Lennard–Jones potential
+with pair interactions described by the 12–6 Lennard–Jones potential,
 
 ```math
-U(r)=4\epsilon
+U(r) = 4\varepsilon
 \left[
 \left(\frac{\sigma}{r}\right)^{12}
 -
@@ -151,271 +61,198 @@ U(r)=4\epsilon
 \right].
 ```
 
-Implemented algorithms include:
+Metal-specific lattice constants, atomic masses, and Lennard–Jones parameters are taken from Heinz *et al.* [1]. The code uses periodic boundary conditions, the minimum-image convention, and a Verlet neighbor list to avoid evaluating every particle pair at every timestep.
 
-- periodic boundary conditions
-- minimum image convention
-- Verlet neighbor lists
-- Berendsen thermostat
-- Velocity Verlet integration
+Time integration is performed with Velocity Verlet [2–4]. NVE production runs evolve without thermostatting, while NVT simulations use Berendsen temperature coupling [5]. Velocities are initialized from a Maxwell–Boltzmann distribution with center-of-mass drift removed.
+
+The numerical core is available in pure Python/NumPy and through an optional pybind11 C++ extension. Keeping both implementations makes it possible to use the Python code as a readable reference while benchmarking an accelerated backend on the same simulation problem.
 
 ---
 
-# Project Structure
+## Analysis
+
+A saved trajectory can be reduced to thermodynamic, structural, and dynamical observables using the analysis package. The current workflow computes temperature, pressure, kinetic/potential/total energy, radial distribution functions, coordination number, static structure factor, mean squared displacement, velocity autocorrelation functions, and diffusion estimates from both MSD and VACF.
+
+![Streamlit analysis report for Ni, 5x5x5 FCC, NVT, 300 K](screenshots/img_analysis_report.png)
+
+The structural quantities are intended to be interpreted together. At low temperature, sharp RDF coordination shells and a coordination number near 12 identify the FCC crystal. At high temperature, the Cu and Ni sweeps show broadening and eventual loss of higher-order RDF structure at the same temperatures where the MSD changes from a bounded plateau to sustained growth.
+
+See [`Analysis_Report.md`](docs/Analysis_Report.md) for the full discussion of the 300 K metal survey and the Cu/Ni temperature sweeps.
+
+---
+
+## Verification and validation
+
+The automated validation suite checks the numerical implementation against conservation laws, expected convergence behavior, and known properties of an FCC crystal. Tests include NVE energy conservation, total momentum conservation, component equipartition, timestep refinement, RDF peak positions, first-shell coordination number, and NVT temperature stability.
+
+Each validation run produces quantitative pass/fail metrics together with figures suitable for inspection or inclusion in a technical report.
+
+![Streamlit validation summary](screenshots/img_validation_pass.png)
+
+<p align="center">
+  <img src="screenshots/img_validation_energy.png" alt="NVE energy conservation" width="48%">
+  <img src="screenshots/img_validation_timestep.png" alt="Timestep convergence" width="48%">
+</p>
+
+The representative Ni validation case gives bounded NVE energy error with no secular drift, momentum conservation at floating-point precision, the expected second-order convergence of Velocity Verlet, and the correct FCC structural signatures. The same validation framework can be run for all supported metals.
+
+For methodology, tolerances, equations, and representative numerical results, see [`Validation_Report.md`](docs/Validation_Report.md).
+
+---
+
+## Performance
+
+The performance suite measures the main computational kernels over multiple FCC system sizes. It reports neighbor-list construction time, force-evaluation time, Velocity Verlet integration time, total runtime scaling, and atom-step throughput.
+
+The same benchmark workflow can be run with the Python and C++ implementations, making the effect of compiled kernels directly measurable rather than anecdotal.
+
+<p align="center">
+  <img src="screenshots/img_performance_scaling.png" alt="Performance scaling with system size" width="48%">
+  <img src="screenshots/img_kernel_timing.png" alt="Kernel timing breakdown" width="48%">
+</p>
+
+Further parallelization and a dedicated performance report are planned extensions.
+
+---
+
+## Interactive interfaces
+
+The Streamlit application provides the most complete interactive interface to the project. It exposes simulation controls, three-dimensional atomic visualization, analysis, validation, and performance results in a single web application.
+
+```bash
+streamlit run streamlit_app.py
+```
+
+A desktop interface is also available:
+
+```bash
+python gui.py
+```
+
+![Desktop GUI](screenshots/img_gui_dashboard.png)
+
+For scripted workflows, the repository includes example drivers:
+
+```bash
+python examples/run_analysis.py
+python examples/run_validation.py
+python examples/run_performance.py
+```
+
+---
+
+## Installation
+
+Clone the repository and install the Python dependencies:
+
+```bash
+git clone https://github.com/adwendland/FCC-Molecular-Dynamics.git
+cd FCC-Molecular-Dynamics
+
+python -m pip install -r requirements.txt
+python -m pip install -e .
+```
+
+Building the editable package also builds the optional pybind11 extension when a compatible C++ toolchain is available.
+
+For development and testing:
+
+```bash
+python -m pip install -r requirements-dev.txt
+python -m pip install -e .
+python -m pytest
+```
+
+The GitHub Actions workflow runs the test suite with coverage on Python 3.11, 3.12, and 3.13 for pushes and pull requests.
+
+---
+
+## Project structure
 
 ```text
-PROJECT_FCC_MD/
-
+FCC-Molecular-Dynamics/
 ├── md/
-│   ├── analysis/          # RDF, MSD, VACF, structure factor, transport
-│   ├── validation/        # Verification & validation suite
-│   ├── performance/       # Performance benchmarking
-│   ├── constants.py
-│   ├── lattice.py
-│   ├── neighborlist.py
-│   ├── forces.py
-│   ├── integrator.py
-│   ├── system.py
+│   ├── analysis/              # RDF, MSD, VACF, S(k), thermodynamics, transport
+│   ├── performance/           # Kernel and scaling benchmarks
+│   ├── validation/            # Conservation, convergence, structure, thermostat tests
+│   ├── constants.py           # Metal and unit-system constants
+│   ├── forces.py              # Pair-force evaluation
+│   ├── integrator.py          # Velocity Verlet and thermostat integration
+│   ├── lattice.py             # FCC lattice construction
+│   ├── neighborlist.py        # Verlet neighbor lists
+│   ├── system.py              # Simulation state and system utilities
 │   ├── plotting.py
 │   ├── viz.py
-│   ├── md_cpp.cpp         # pybind11 C++ kernels
-│   └── md_cpp*.pyd        # compiled extension
+│   └── md_cpp.cpp             # pybind11 C++ kernels
 │
-├── outputs/               # Saved simulations, reports, figures
-├── screenshots/           # README images
-├── examples/              # Example driver scripts
+├── docs/
+│   ├── Analysis_Report.md
+│   ├── Validation_Report.md
+├── examples/
+│   ├── run_analysis.py
+│   ├── run_performance.py
+│   └── run_validation.py
+├── figures/
+├── outputs/
+│   ├── analysis/
+│   ├── validation/
+├── tests/                     # pytest unit, scientific, and smoke tests
+├── screenshots/               # README/report figures
+├── .github/workflows/tests.yml
 │
-├── streamlit_app.py       # Web application
-├── gui.py                 # Desktop GUI
-├── main.py                # Command-line interface
-│
-├── requirements.txt
+├── streamlit_app.py
+├── gui.py
+├── TESTING.md
+├── pyproject.toml
 ├── setup.py
 └── README.md
 ```
 
 ---
 
-# Installation
+## Testing
 
-Clone the repository
-
-```bash
-git clone https://github.com/yourusername/FCC-Molecular-Dynamics.git
-cd FCC-Molecular-Dynamics
-```
-
-Install dependencies
+The pytest suite covers the numerical core, analysis routines, validation helpers, and short end-to-end scientific smoke tests. Coverage configuration is defined in `pyproject.toml`.
 
 ```bash
-pip install -r requirements.txt
+python -m pytest
+python -m pytest --cov=md --cov-report=term-missing
 ```
 
----
-
-# Running
-
-## Streamlit
-
-```bash
-streamlit run streamlit_app.py
-```
+See [`TESTING.md`](TESTING.md) for details.
 
 ---
 
-## Desktop GUI
+## Current scope and next steps
 
-```bash
-python gui.py
-```
+The code is intentionally a compact molecular dynamics implementation rather than a replacement for a production package such as LAMMPS. The current Lennard–Jones model is useful for studying the algorithms and analysis pipeline in a transparent setting, while also making the limitations of the model explicit.
 
-![GUI dashboard](screenshots/img_gui_dashboard.png)
-
----
-
-## Terminal
-
-```bash
-python run_analysis.py
-python run_validation.py
-python run_performance.py
-```
-
----
-
-# Analysis
-
-The analysis suite automatically generates:
-
-- Temperature history
-- Pressure history
-- Energy history
-- RDF
-- MSD
-- VACF
-- Structure factor
-- Diffusion analysis
-- Heat capacity
-- Coordination number
-
-Plots may be displayed interactively or saved automatically.
-
-![Streamlit analysis report (Ni, 5x5x5, NVT, 300K, 10ps at dt=0.1fs)](screenshots/img_analysis_report.png)
-
-![Example RDF plot from Streamlit app (Ni, 5x5x5, NVT, 300K, 10ps at dt=0.1fs)](screenshots/img_rdf.png)
-
-![Example MSD plot from Streamlit app (Ni, 5x5x5, NVT, 300K, 10ps at dt=0.1fs)](screenshots/img_msd.png)
-
-![Example VACF plot from Streamlit app (Ni, 5x5x5, NVT, 300K, 10ps at dt=0.1fs)](screenshots/img_vacf.png)
-
-
----
-
-# Validation
-
-The simulator includes an automated verification & validation (V&V) suite to verify both the numerical implementation and the physical correctness of the molecular dynamics simulation.
-
-The current suite evaluates:
-
-- Energy conservation in NVE simulations
-- Linear momentum conservation
-- Equipartition of kinetic energy among Cartesian (x,y,z) components
-- Second-order timestep convergence using Richardson refinement
-- FCC radial distribution function (RDF) peak positions
-- Coordination number against the ideal FCC value (12)
-- Temperature stability during NVT simulations
-
-Each validation test produces a publication-quality figure together with a detailed pass/fail report and quantitative error metrics.
-
-Example validation report:
-
-```
-✓ Energy Conservation
-
-✓ Momentum Conservation
-
-✓ Equipartition
-
-✓ RDF Peak Positions
-
-✓ Coordination Number
-
-✓ Temperature Stability
-
-✓ Time-Step Convergence
-```
-
-![Streamlit validation pass/fail report (Ni, 5x5x5, 300K, 10ps at dt=0.1fs)](screenshots/img_validation_pass.png)
-
-![Example energy conservation plot from Streamlit app (Ni, NVE, 5x5x5, 300K, 10ps at dt=0.1fs)](screenshots/img_validation_energy.png)
-
-![Example timestep refinement plot from Streamlit app (Ni, 5x5x5, 300K, 500 steps)](screenshots/img_validation_timestep.png)
-
-![Example RDF validation plot from Streamlit app (Ni, 5x5x5, 300K, 10ps at dt=0.1fs)](screenshots/img_validation_rdf.png)
-
-
----
-
-# Performance
-
-The performance suite benchmarks the computational kernels of the simulator across multiple FCC system sizes. Reports include timing for neighbor-list construction, force evaluation, Velocity-Verlet integration, and overall simulation throughput.
-
-The simulator supports both a pure Python implementation and an optional pybind11-based C++ backend for computational kernels, enabling direct performance comparisons and accelerated production runs.
-
-Benchmark results include:
-
-- Runtime scaling with system size
-- Neighbor-list construction time
-- Force evaluation time
-- Velocity-Verlet integration throughput
-- Atom-steps per second
-- Summary performance report
-
-![Streamlit performance benchmark table (Ni, 500 integrator steps, 20 repeats, C++ backend)](screenshots/img_performance_table.png)
-
-![Example performance scaling plot from Streamlit app (Ni, 500 integrator steps, 20 repeats, C++ backend)](screenshots/img_performance_scaling.png)
-
-![Example kernel timing plot from Streamlit app (Ni, 500 integrator steps, 20 repeats, C++ backend)](screenshots/img_kernel_timing.png)
-
-
----
-
-# Output Files
-
-Typical simulation outputs include
-
-```
-trajectory.xyz
-trajectory.npz
-
-temperature.dat
-pressure.dat
-energy.dat
-
-rdf.dat
-msd.dat
-vacf.dat
-structure_factor.dat
-
-analysis_report.txt
-validation_report.txt
-performance_report.txt
-
-plots/
-```
-
----
-
-# Future Work
-
-Potential extensions include
-
-- Embedded Atom Method (EAM)
-- Nose–Hoover thermostat
-- Parrinello–Rahman barostat
-- OpenMP parallelization
-- GPU acceleration
-- C++ force kernels
-- MPI domain decomposition
-- Additional crystal structures
-- LAMMPS benchmark comparison
-
----
-
-# Motivation
-
-This project was developed to demonstrate modern scientific software development practices for computational materials science, including
-
-- numerical methods
-- scientific visualization
-- software engineering
-- verification & validation
-- computational physics
-- performance benchmarking
+The next planned extensions are external comparison against LAMMPS, shared-memory parallelization of the computational kernels, and a dedicated scaling/performance study. Longer-term directions include many-body metallic potentials such as EAM, additional ensembles, larger simulations, and defect-focused calculations.
 
 ---
 
 ## References
 
-[1] H. Heinz, R. A. Vaia, B. L. Farmer, and R. R. Naik,
-Accurate simulation of surfaces and interfaces of face-centered cubic metals using
-12–6 and 9–6 Lennard-Jones potentials,
-J. Phys. Chem. C 112 (2008), no. 44, 17281–17290.
+[1] H. Heinz, R. A. Vaia, B. L. Farmer, and R. R. Naik,  
+“Accurate simulation of surfaces and interfaces of face-centered cubic metals using 12–6 and 9–6 Lennard-Jones potentials,”  
+*J. Phys. Chem. C* **112** (2008), no. 44, 17281–17290.
 
-[2] L. Verlet,
-Computer "experiments" on classical fluids. I. Thermodynamical properties of Lennard-Jones molecules,
-Phys. Rev. 159 (1967), 98–103.
+[2] L. Verlet,  
+“Computer ‘experiments’ on classical fluids. I. Thermodynamical properties of Lennard-Jones molecules,”  
+*Phys. Rev.* **159** (1967), 98–103.
 
-[3] D. Frenkel and B. Smit,
-Understanding Molecular Simulation: From Algorithms to Applications,
-2nd ed., Academic Press, San Diego, CA, 2002.
+[3] D. Frenkel and B. Smit,  
+*Understanding Molecular Simulation: From Algorithms to Applications*, 2nd ed., Academic Press, San Diego, 2002.
 
-[4] M. P. Allen and D. J. Tildesley,
-Computer Simulation of Liquids,
-2nd ed., Oxford University Press, Oxford, 2017.
+[4] M. P. Allen and D. J. Tildesley,  
+*Computer Simulation of Liquids*, 2nd ed., Oxford University Press, Oxford, 2017.
+
+[5] H. J. C. Berendsen, J. P. M. Postma, W. F. van Gunsteren, A. DiNola, and J. R. Haak,  
+“Molecular dynamics with coupling to an external bath,”  
+*J. Chem. Phys.* **81** (1984), 3684–3690.
 
 ---
 
-# License
+## License
 
 MIT License.

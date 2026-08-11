@@ -33,7 +33,8 @@ class System:
         # Intialize energies
         self.kinetic_energy = 0.0
         self.potential_energy = 0.0
-        self.total_energy = 0.0     
+        self.total_energy = 0.0 
+        self.virial = 0.0    
 
         # Simulation box
         self.box = np.array(box, dtype=float)
@@ -84,10 +85,15 @@ class System:
         pairs = self.nl.pairs
 
         # Update forces
-        forces, potential_energy = force_fn(self.pos, self.box, pairs)
+        forces, potential_energy, virial = force_fn(
+            self.pos,
+            self.box,
+            pairs,
+        )
 
         self.force[:, :] = forces
         self.potential_energy = float(potential_energy)
+        self.virial = float(virial)
 
         return self.potential_energy
         

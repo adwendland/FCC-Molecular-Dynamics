@@ -30,9 +30,15 @@ def test_fcc_single_cell_contains_standard_basis():
 def test_lj_multiple_pairs_accumulate_force_and_energy():
     positions = np.array([[0.0, 0.0, 0.0], [1.1, 0.0, 0.0], [0.0, 1.1, 0.0]])
     pairs = np.array([[0, 1], [0, 2]], dtype=np.int32)
-    forces, energy = lj_forces(positions, np.array([20.0] * 3), pairs)
-    one_pair_force, one_pair_energy = lj_forces(
-        positions[:2], np.array([20.0] * 3), np.array([[0, 1]], dtype=np.int32)
+    forces, energy, _ = lj_forces(
+        positions,
+        np.array([20.0] * 3),
+        pairs,
+    )
+    one_pair_force, one_pair_energy, _ = lj_forces(
+        positions[:2],
+        np.array([20.0] * 3),
+        np.array([[0, 1]], dtype=np.int32),
     )
     assert energy == pytest.approx(2.0 * one_pair_energy)
     np.testing.assert_allclose(forces.sum(axis=0), 0.0, atol=1e-14)
@@ -42,7 +48,12 @@ def test_lj_multiple_pairs_accumulate_force_and_energy():
 
 def test_lj_pair_exactly_at_cutoff_is_excluded():
     positions = np.array([[0.0, 0.0, 0.0], [2.5, 0.0, 0.0]])
-    forces, energy = lj_forces(positions, np.array([20.0] * 3), [[0, 1]], rcut=2.5)
+    forces, energy, virial = lj_forces(
+        positions,
+        np.array([20.0] * 3),
+        [[0, 1]],
+        rcut=2.5,
+    )
     np.testing.assert_allclose(forces, 0.0)
     assert energy == 0.0
 
@@ -84,10 +95,11 @@ def test_system_compute_forces_updates_state():
     system = System(np.array([[0.0, 0.0, 0.0], [1.1, 0.0, 0.0]]), 2.0, [10.0] * 3)
 
     def force_fn(pos, box, pairs):
-        return np.full_like(pos, 3.0), -7.5
+        return np.full_like(pos, 3.0), -7.5, 4.25
 
     returned = system.compute_forces(force_fn)
     assert returned == pytest.approx(-7.5)
+    assert system.virial == pytest.approx(4.25)
     assert system.potential_energy == pytest.approx(-7.5)
     np.testing.assert_allclose(system.force, 3.0)
 

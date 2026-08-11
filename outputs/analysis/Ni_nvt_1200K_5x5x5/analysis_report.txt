@@ -12,7 +12,7 @@ Ensemble                    : NVT
 Target temperature          : 1200.00 K
 Production time step        : 0.1000 fs
 Simulation time             : 10000.0000 fs (10.0000 ps)
-Wall runtime                : 12.11 min
+Wall runtime                : 11.89 min
 Equilibration steps         : 20000
 Production steps            : 100000
 Samples                     : 201
@@ -23,8 +23,8 @@ Thermodynamics
 ----------------------------------------------------------
 Mean Temperature            : 1202.1789 K
 Std Temperature             : 19.3988 K
-Mean Pressure               : 6.820904e-02 eV/Å³
-Std Pressure                : 9.166983e-03 eV/Å³
+Mean Pressure               : 8.617171e-02 eV/Å³
+Std Pressure                : 1.853971e-03 eV/Å³
 Mean Total Energy           : -8.361445e+02 eV
 Std Total Energy            : 1.536156e+00 eV
 

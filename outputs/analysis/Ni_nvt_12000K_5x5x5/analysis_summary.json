@@ -32,8 +32,8 @@
     "summary": {
         "mean_temperature": 12009.607027721848,
         "std_temperature": 184.81237745433285,
-        "mean_pressure": 0.10112321195713868,
-        "std_pressure": 0.0666109374036297,
+        "mean_pressure": 0.8150242473874466,
+        "std_pressure": 0.01695447078689899,
         "mean_total_energy": 573.0229474965029,
         "std_total_energy": 15.731135262354528,
         "D_msd": 0.0005089730542904176,
@@ -44,8 +44,8 @@
     "thermo": {
         "mean_temperature": 12009.607027721848,
         "std_temperature": 184.81237745433285,
-        "mean_pressure": 0.10112321195713868,
-        "std_pressure": 0.0666109374036297,
+        "mean_pressure": 0.8150242473874466,
+        "std_pressure": 0.01695447078689899,
         "mean_total_energy": 573.0229474965029,
         "std_total_energy": 15.731135262354528
     },
@@ -66,6 +66,6 @@
         "D": 0.0049100534892980545,
         "integral": 0.014730160467894163
     },
-    "runtime_seconds": 4610.362619799562,
+    "runtime_seconds": 2080.8682885002345,
     "simulation_time_fs": 10000.0
 }

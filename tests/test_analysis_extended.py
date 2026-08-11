@@ -75,20 +75,32 @@ def test_pressure_for_force_free_particles_is_ideal_kinetic_term():
         pos=np.zeros((2, 3)),
         force=np.zeros((2, 3)),
         kinetic_energy=0.0,
+        virial=0.0,
         volume=lambda: 8.0,
     )
-    system.update_kinetic_energy = lambda: setattr(system, "kinetic_energy", 12.0)
+
+    system.update_kinetic_energy = lambda: setattr(
+        system,
+        "kinetic_energy",
+        12.0,
+    )
+
     assert compute_pressure(system) == pytest.approx(1.0)
 
 
 def test_pressure_includes_virial_term():
     system = SimpleNamespace(
-        pos=np.array([[1.0, 0.0, 0.0]]),
-        force=np.array([[3.0, 0.0, 0.0]]),
         kinetic_energy=0.0,
+        virial=3.0,
         volume=lambda: 3.0,
     )
-    system.update_kinetic_energy = lambda: setattr(system, "kinetic_energy", 0.0)
+
+    system.update_kinetic_energy = lambda: setattr(
+        system,
+        "kinetic_energy",
+        0.0,
+    )
+
     assert compute_pressure(system) == pytest.approx(1.0 / 3.0)
 
 
