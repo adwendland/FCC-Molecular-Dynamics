@@ -2,7 +2,7 @@ import numpy as np
 from md.integrator import step_nve
 
 def test_relative_energy_drift(
-        system, dt, n_steps, epsilon, sigma, rcut,sample_every=1):
+        system, dt, n_steps, epsilon, sigma, rcut, sample_every=1, backend="python"):
     """
     Run NVE and compute relative total energy drift.
     """
@@ -13,13 +13,13 @@ def test_relative_energy_drift(
     system.remove_drift()
 
     # Make sure forces + PE initialized
-    step_nve(system, 0.0, epsilon=epsilon, sigma=sigma, rcut=rcut)
+    step_nve(system, 0.0, epsilon=epsilon, sigma=sigma, rcut=rcut, backend=backend)
 
     system.update_energies()
     E0 = system.total_energy
 
     for step in range(n_steps):
-        step_nve(system, dt, epsilon=epsilon, sigma=sigma, rcut=rcut)
+        step_nve(system, dt, epsilon=epsilon, sigma=sigma, rcut=rcut, backend=backend)
 
         if step % sample_every == 0:
             system.update_energies()

@@ -12,6 +12,7 @@ class NeighborList:
         self.cutoff = cutoff
         self.skin = skin
         self.cutoff_skin = cutoff + skin
+        self.rebuild_count = 0
 
         self.box = np.array(box, dtype=float)
         self.pos_old = positions.copy()
@@ -43,8 +44,12 @@ class NeighborList:
                 if dr.dot(dr) < cutoff2:
                     pairs.append((i, j))
 
-        self.pairs = np.asarray(pairs, dtype=np.int32)
+        self.pairs = np.asarray(
+            pairs, dtype=np.int32
+        ).reshape(-1, 2)
         self.pos_old[:] = pos.copy()
+
+        self.rebuild_count += 1
 
     # ------------------------------------------------------------
     # Check if rebuild is necessary

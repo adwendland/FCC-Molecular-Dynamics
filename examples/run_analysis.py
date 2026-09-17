@@ -28,6 +28,7 @@ def main():
     equil_steps = 20000
     dt = 0.1
     sample_every = 500
+    backend = "python"  # change to "cpp" after building the pybind11 extension
 
     nx = 5
     ny = 5
@@ -51,6 +52,7 @@ def main():
         n_equil_steps=equil_steps,
         n_steps=prod_steps,
         sample_every=sample_every,
+        backend=backend,
         analyses=None,  # None means run all analyses
         # analyses=["thermo", "rdf", "coordination_number"],
         # analyses=["msd", "vacf", "diffusion_msd", "diffusion_vacf"],

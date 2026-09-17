@@ -153,13 +153,130 @@ def test_simple_rescale_does_nothing_at_zero_temperature():
 def test_step_nve_delegates_to_velocity_verlet(monkeypatch):
     called = {}
 
-    def fake(system, dt, epsilon, sigma, rcut):
-        called.update(dt=dt, epsilon=epsilon, sigma=sigma, rcut=rcut)
+    def fake(system, dt, epsilon, sigma, rcut, backend):
+        called.update(dt=dt, epsilon=epsilon, sigma=sigma, rcut=rcut, backend=backend)
 
     monkeypatch.setattr(integrator, "velocity_verlet", fake)
     integrator.step_nve(object(), 0.2, epsilon=2.0, sigma=3.0, rcut=4.0)
-    assert called == {"dt": 0.2, "epsilon": 2.0, "sigma": 3.0, "rcut": 4.0}
+    assert called == {
+        "dt": 0.2,
+        "epsilon": 2.0,
+        "sigma": 3.0,
+        "rcut": 4.0,
+        "backend": "python",
+    }
 
+
+def make_two_particle_system_for_backend_test():
+    positions = np.array([[4.5, 5.0, 5.0], [5.5, 5.0, 5.0]])
+    system = System(positions, mass=10.0, box=[10.0] * 3, cutoff=2.5, skin=0.3)
+    system.vel[:] = [[0.0, 0.01, 0.0], [0.0, -0.01, 0.0]]
+    return system
+
+
+def test_auto_backend_is_rejected():
+    with pytest.raises(ValueError, match="Automatic backend selection"):
+        integrator.resolve_backend("auto")
+
+
+def test_cpp_backend_fails_clearly_when_extension_missing(monkeypatch):
+    monkeypatch.setattr(integrator, "_HAVE_CPP", False)
+    with pytest.raises(RuntimeError, match=r"C\+\+ backend requested"):
+        integrator.resolve_backend("cpp")
+
+
+
+def test_python_backend_does_not_use_cpp_even_when_available(monkeypatch):
+
+    class ExplodingCpp:
+
+        def lj_forces_cpp(self, *args, **kwargs):
+            raise AssertionError(
+                "Python backend called C++ force calculation"
+            )
+
+        def verlet_drift_cpp(self, *args, **kwargs):
+            raise AssertionError(
+                "Python backend called C++ drift"
+            )
+
+        def verlet_kick_cpp(self, *args, **kwargs):
+            raise AssertionError(
+                "Python backend called C++ kick"
+            )
+
+    monkeypatch.setattr(integrator, "_HAVE_CPP", True)
+
+    monkeypatch.setattr(
+        integrator, "md_cpp", ExplodingCpp(), raising=False
+    )
+
+    system = make_two_particle_system_for_backend_test()
+
+    integrator.velocity_verlet(
+        system, dt=1e-3, backend="python"
+    )
+
+    assert np.all(np.isfinite(system.pos))
+
+
+def test_cpp_backend_dispatches_to_cpp_extension(monkeypatch):
+    calls = []
+
+    class FakeCpp:
+
+        def lj_forces_cpp(
+            self, pos, force, box, pairs,
+            epsilon, sigma, rcut
+        ):
+            calls.append("force")
+
+            # Mock force calculation
+            force.fill(0.0)
+
+            return -1.25, 2.5
+
+        def verlet_drift_cpp(
+            self, pos, vel, force, box, mass, dt
+        ):
+            calls.append("drift")
+
+            # First half-kick
+            vel += 0.5 * dt * force / mass
+
+            # Full drift + periodic wrapping
+            pos[:] = (pos + dt * vel) % box
+
+        def verlet_kick_cpp(
+            self, vel, force, mass, dt
+        ):
+            calls.append("kick")
+
+            # Second half-kick
+            vel += 0.5 * dt * force / mass
+
+    monkeypatch.setattr(integrator, "_HAVE_CPP", True)
+    monkeypatch.setattr(
+        integrator, "md_cpp", FakeCpp(), raising=False
+    )
+
+    system = make_two_particle_system_for_backend_test()
+
+    integrator.velocity_verlet(
+        system, dt=1e-3, backend="cpp"
+    )
+
+    # Verify correct velocity-Verlet execution order
+    assert calls == [
+        "force",
+        "drift",
+        "force",
+        "kick",
+    ]
+
+    # Verify C++ results were stored
+    assert system.potential_energy == pytest.approx(-1.25)
+    assert system.virial == pytest.approx(2.5)
 
 def test_step_nvt_calls_integrator_then_thermostat(monkeypatch):
     calls = []

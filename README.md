@@ -67,6 +67,8 @@ Time integration is performed with Velocity Verlet [2–4]. NVE production runs 
 
 The numerical core is available in pure Python/NumPy and through an optional pybind11 C++ extension. Keeping both implementations makes it possible to use the Python code as a readable reference while benchmarking an accelerated backend on the same simulation problem.
 
+Backend selection is explicit throughout the analysis, validation, and performance workflows: choose `backend="python"` or `backend="cpp"`. There is no automatic fallback. If `cpp` is requested without a built `md.md_cpp` extension, the run stops with a clear error rather than silently switching implementations. Reports and saved metadata record the selected backend.
+
 ---
 
 ## Analysis

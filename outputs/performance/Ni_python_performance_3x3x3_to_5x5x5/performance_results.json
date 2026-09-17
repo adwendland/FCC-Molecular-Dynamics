@@ -1,0 +1,231 @@
+{
+    "suite": "FCC MD Performance Suite",
+    "backend": "python",
+    "metadata": {
+        "metal": "Ni",
+        "backend": "python",
+        "dt": 0.01
+    },
+    "environment": {
+        "python": "3.13.9",
+        "platform": "Windows-11-10.0.26200-SP0",
+        "processor": "Intel64 Family 6 Model 140 Stepping 1, GenuineIntel",
+        "cpu_count": 8,
+        "omp_num_threads": null,
+        "mkl_num_threads": null,
+        "openblas_num_threads": null
+    },
+    "parameters": {
+        "metal": "Ni",
+        "T0": 300.0,
+        "dt_fs": 0.01,
+        "n_steps": 500,
+        "repeats": 5,
+        "warmup": 2,
+        "seed": 123,
+        "thermal_displacement": 0.01,
+        "sizes": [
+            [
+                3,
+                3,
+                3
+            ],
+            [
+                4,
+                4,
+                4
+            ],
+            [
+                5,
+                5,
+                5
+            ]
+        ]
+    },
+    "cases": [
+        {
+            "metadata": {
+                "metal": "Ni",
+                "nx": 3,
+                "ny": 3,
+                "nz": 3,
+                "N": 108,
+                "T0": 300.0,
+                "dt_fs": 0.01,
+                "lattice_constant": 3.52,
+                "sigma": 2.273573528694146,
+                "epsilon": 0.24500724975000002,
+                "rcut": 5.683933821735366,
+                "skin": 0.3,
+                "backend": "python"
+            },
+            "neighbor_build": {
+                "benchmark": "neighbor_build",
+                "N": 108,
+                "pairs": 3571,
+                "candidate_pairs": 5778,
+                "mean_seconds": 0.02182792000239715,
+                "median_seconds": 0.021762099990155548,
+                "min_seconds": 0.021328500006347895,
+                "max_seconds": 0.022315700014587492,
+                "std_seconds": 0.0003668388647946284,
+                "repeats": 5,
+                "builds_per_second": 45.81288551040043,
+                "candidate_pairs_per_second": 264706.85247909365
+            },
+            "force_evaluation": {
+                "benchmark": "force_evaluation",
+                "backend": "python",
+                "N": 108,
+                "pairs": 3571,
+                "mean_seconds": 0.029293960006907583,
+                "median_seconds": 0.028783899993868545,
+                "min_seconds": 0.028185400005895644,
+                "max_seconds": 0.031235500006005168,
+                "std_seconds": 0.0012361392243132722,
+                "repeats": 5,
+                "force_calls_per_second": 34.13672988439247,
+                "pair_evaluations_per_second": 121902.26241716552
+            },
+            "integrator_nve": {
+                "benchmark": "integrator_nve",
+                "backend": "python",
+                "N": 108,
+                "dt_fs": 0.01,
+                "n_steps_per_repeat": 500,
+                "mean_seconds": 32.628694000002,
+                "median_seconds": 32.76546310001868,
+                "min_seconds": 31.048285099997884,
+                "max_seconds": 34.51102939998964,
+                "std_seconds": 1.3728189552814103,
+                "repeats": 5,
+                "steps_per_second": 15.323935429348454,
+                "atom_steps_per_second": 1654.985026369633,
+                "simulated_ns_per_day": 0.013239880210957065
+            }
+        },
+        {
+            "metadata": {
+                "metal": "Ni",
+                "nx": 4,
+                "ny": 4,
+                "nz": 4,
+                "N": 256,
+                "T0": 300.0,
+                "dt_fs": 0.01,
+                "lattice_constant": 3.52,
+                "sigma": 2.273573528694146,
+                "epsilon": 0.24500724975000002,
+                "rcut": 5.683933821735366,
+                "skin": 0.3,
+                "backend": "python"
+            },
+            "neighbor_build": {
+                "benchmark": "neighbor_build",
+                "N": 256,
+                "pairs": 10001,
+                "candidate_pairs": 32640,
+                "mean_seconds": 0.13964685999671927,
+                "median_seconds": 0.14028799999505281,
+                "min_seconds": 0.13527840000460856,
+                "max_seconds": 0.14560679998248816,
+                "std_seconds": 0.004004740624075198,
+                "repeats": 5,
+                "builds_per_second": 7.160920052362746,
+                "candidate_pairs_per_second": 233732.43050912002
+            },
+            "force_evaluation": {
+                "benchmark": "force_evaluation",
+                "backend": "python",
+                "N": 256,
+                "pairs": 10001,
+                "mean_seconds": 0.09269142000703141,
+                "median_seconds": 0.09454489999916404,
+                "min_seconds": 0.08659600000828505,
+                "max_seconds": 0.09551730001112446,
+                "std_seconds": 0.0037695643295833064,
+                "repeats": 5,
+                "force_calls_per_second": 10.788485060689993,
+                "pair_evaluations_per_second": 107895.63909196062
+            },
+            "integrator_nve": {
+                "benchmark": "integrator_nve",
+                "backend": "python",
+                "N": 256,
+                "dt_fs": 0.01,
+                "n_steps_per_repeat": 500,
+                "mean_seconds": 84.99855800000951,
+                "median_seconds": 83.80551900001592,
+                "min_seconds": 83.59522960000322,
+                "max_seconds": 89.44749890000094,
+                "std_seconds": 2.5037562188763163,
+                "repeats": 5,
+                "steps_per_second": 5.882452735256333,
+                "atom_steps_per_second": 1505.9079002256212,
+                "simulated_ns_per_day": 0.005082439163261471
+            }
+        },
+        {
+            "metadata": {
+                "metal": "Ni",
+                "nx": 5,
+                "ny": 5,
+                "nz": 5,
+                "N": 500,
+                "T0": 300.0,
+                "dt_fs": 0.01,
+                "lattice_constant": 3.52,
+                "sigma": 2.273573528694146,
+                "epsilon": 0.24500724975000002,
+                "rcut": 5.683933821735366,
+                "skin": 0.3,
+                "backend": "python"
+            },
+            "neighbor_build": {
+                "benchmark": "neighbor_build",
+                "N": 500,
+                "pairs": 19528,
+                "candidate_pairs": 124750,
+                "mean_seconds": 0.4779903800052125,
+                "median_seconds": 0.4709865000040736,
+                "min_seconds": 0.47003520000725985,
+                "max_seconds": 0.5033055999956559,
+                "std_seconds": 0.014321693270066238,
+                "repeats": 5,
+                "builds_per_second": 2.0920923136342093,
+                "candidate_pairs_per_second": 260988.51612586764
+            },
+            "force_evaluation": {
+                "benchmark": "force_evaluation",
+                "backend": "python",
+                "N": 500,
+                "pairs": 19528,
+                "mean_seconds": 0.16352669999469072,
+                "median_seconds": 0.16342249998706393,
+                "min_seconds": 0.1612223999982234,
+                "max_seconds": 0.1659588999755215,
+                "std_seconds": 0.0017558178806228297,
+                "repeats": 5,
+                "force_calls_per_second": 6.115209320755983,
+                "pair_evaluations_per_second": 119417.80761572284
+            },
+            "integrator_nve": {
+                "benchmark": "integrator_nve",
+                "backend": "python",
+                "N": 500,
+                "dt_fs": 0.01,
+                "n_steps_per_repeat": 500,
+                "mean_seconds": 166.94142557999004,
+                "median_seconds": 164.5432593000005,
+                "min_seconds": 163.84418139999616,
+                "max_seconds": 173.28787329999614,
+                "std_seconds": 4.154645043816789,
+                "repeats": 5,
+                "steps_per_second": 2.995062479327067,
+                "atom_steps_per_second": 1497.5312396635334,
+                "simulated_ns_per_day": 0.0025877339821385862
+            }
+        }
+    ],
+    "runtime_seconds": 1431.0514642000198
+}

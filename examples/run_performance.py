@@ -15,7 +15,7 @@ if __name__ == "__main__":
         n_steps=250,
         repeats=10,
         warmup=2,
-        backend="serial-baseline",
+        backend="python",  # change to "cpp" after building the pybind11 extension
         save_outputs=False,
     )
     print_performance_report(results)

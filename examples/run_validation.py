@@ -27,6 +27,7 @@ def main():
     equil_steps = 20000
     dt = 0.1
     sample_every = 500
+    backend = "python"  # change to "cpp" after building the pybind11 extension
 
     nx = 5
     ny = 5
@@ -51,6 +52,7 @@ def main():
         refinement_steps=500,
         refinement_dt=0.04,
         sample_every=sample_every,
+        backend=backend,
         tests=None,  # None means run all validation tests
         # tests=["energy_drift", "timestep_refinement"],
         save_outputs=save_outputs,

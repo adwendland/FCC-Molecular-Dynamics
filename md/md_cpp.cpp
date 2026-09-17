@@ -147,76 +147,61 @@ py::tuple lj_forces_cpp(
 //     (potential_energy, virial)
 // at the new positions.
 // -------------------------------------------------------------
-py::tuple velocity_verlet_lj_cpp(
+
+void verlet_drift_cpp(
     py::array_t<double> pos_in,
     py::array_t<double> vel_in,
     py::array_t<double> force_in,
     py::array_t<double> box_in,
-    py::array_t<long long> pairs_in,
     double mass,
-    double dt,
-    double epsilon,
-    double sigma,
-    double rcut
+    double dt
 )
 {
-    auto pos   = pos_in.mutable_unchecked<2>();
-    auto vel   = vel_in.mutable_unchecked<2>();
-    auto force = force_in.mutable_unchecked<2>();
-    auto box   = box_in.unchecked<1>();
+    auto pos = pos_in.mutable_unchecked<2>();
+    auto vel = vel_in.mutable_unchecked<2>();
+    auto force = force_in.unchecked<2>();
+    auto box = box_in.unchecked<1>();
 
     const index_t N = pos.shape(0);
+    const double half_dt_over_m = 0.5 * dt / mass;
 
-    // 1) Compute forces at current positions
-    py::tuple old_result = lj_forces_cpp(
-        pos_in,
-        force_in,
-        box_in,
-        pairs_in,
-        epsilon,
-        sigma,
-        rcut
-    );
-
-    // Old PE and virial are not needed after the first half-step
-    (void)old_result;
-
-    const double half_dt = 0.5 * dt;
-    const double inv_m = 1.0 / mass;
-
-    // 2) v(t + dt/2), x(t + dt)
     for (index_t i = 0; i < N; ++i) {
         for (int k = 0; k < 3; ++k) {
-            vel(i, k) += half_dt * force(i, k) * inv_m;
+
+            // First half-kick
+            vel(i, k) += half_dt_over_m * force(i, k);
+
+            // Full drift
             pos(i, k) += dt * vel(i, k);
 
-            // Wrap positions into [0, L)
+            // Periodic boundary conditions
             const double L = box(k);
             double x = pos(i, k);
             x -= std::floor(x / L) * L;
             pos(i, k) = x;
         }
     }
+}
 
-    // 3) Compute forces and virial at new positions
-    py::tuple new_result = lj_forces_cpp(
-        pos_in,
-        force_in,
-        box_in,
-        pairs_in,
-        epsilon,
-        sigma,
-        rcut
-    );
 
-    // 4) v(t + dt)
+void verlet_kick_cpp(
+    py::array_t<double> vel_in,
+    py::array_t<double> force_in,
+    double mass,
+    double dt
+)
+{
+    auto vel = vel_in.mutable_unchecked<2>();
+    auto force = force_in.unchecked<2>();
+
+    const index_t N = vel.shape(0);
+    const double half_dt_over_m = 0.5 * dt / mass;
+
     for (index_t i = 0; i < N; ++i) {
         for (int k = 0; k < 3; ++k) {
-            vel(i, k) += half_dt * force(i, k) * inv_m;
+            vel(i, k) += half_dt_over_m * force(i, k);
         }
     }
-
-    return new_result;
 }
 
 
@@ -238,19 +223,24 @@ PYBIND11_MODULE(md_cpp, m)
         py::arg("sigma"),
         py::arg("rcut")
     );
-
+    
     m.def(
-        "velocity_verlet_lj_cpp",
-        &velocity_verlet_lj_cpp,
+        "verlet_drift_cpp",
+        &verlet_drift_cpp,
         py::arg("pos"),
         py::arg("vel"),
         py::arg("force"),
         py::arg("box"),
-        py::arg("pairs"),
         py::arg("mass"),
-        py::arg("dt"),
-        py::arg("epsilon"),
-        py::arg("sigma"),
-        py::arg("rcut")
+        py::arg("dt")
+    );
+
+    m.def(
+        "verlet_kick_cpp",
+        &verlet_kick_cpp,
+        py::arg("vel"),
+        py::arg("force"),
+        py::arg("mass"),
+        py::arg("dt")
     );
 }

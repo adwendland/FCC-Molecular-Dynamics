@@ -44,7 +44,7 @@ def run_performance_suite(
     warmup=2,
     seed=123,
     thermal_displacement=0.01,
-    backend="auto",
+    backend="python",
     save_outputs=False,
 ):
     results = run_size_scaling_benchmarks(
@@ -88,7 +88,7 @@ def print_performance_report(results):
     print(f"{'Time step':32s}: {params['dt_fs']:.4f} fs")
     print(f"{'Integrator steps per repeat':32s}: {params['n_steps']}")
     print(f"{'Benchmark repeats':32s}: {params['repeats']}")
-    print(f"{'Backend label':32s}: {results['backend']}")
+    print(f"{'Backend':32s}: {results['backend'].upper()}")
     print(f"{'Total benchmark runtime':32s}: {_runtime_str(results['runtime_seconds'])}")
 
     print("\nEnvironment")
@@ -153,7 +153,7 @@ def make_performance_output_dir(results, output_root=None, run_name=None):
         first = params["sizes"][0]
         last = params["sizes"][-1]
         run_name = (
-            f"{params['metal']}_performance_"
+            f"{params['metal']}_{results['backend']}_performance_"
             f"{first[0]}x{first[1]}x{first[2]}_to_"
             f"{last[0]}x{last[1]}x{last[2]}"
         )

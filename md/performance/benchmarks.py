@@ -6,7 +6,7 @@ These are timing benchmarks, not validation tests.  They are meant to answer:
     - how fast is full time integration?
     - how does runtime scale with system size?
 
-The output is intentionally backend-agnostic so the same suite can later compare
+The benchmark API is backend-selectable so the same suite can compare
 serial NumPy, C++/pybind11, OpenMP, Numba, multiprocessing, etc.
 """
 
@@ -23,7 +23,8 @@ import numpy as np
 
 from md.analysis.analysis_driver import build_system
 from md.forces import lj_forces
-from md.integrator import step_nve
+import md.integrator as integrator
+from md.integrator import resolve_backend, step_nve
 
 
 @dataclass(frozen=True)
@@ -116,19 +117,37 @@ def benchmark_force_evaluation(
     rcut: float,
     repeats: int = 5,
     warmup: int = 2,
+    backend: str = "python",
 ) -> dict:
     """Benchmark one LJ force evaluation using the current neighbor list."""
+    backend = resolve_backend(backend)
     system.nl.update(system.pos)
     pairs = system.nl.pairs
     n_pairs = int(len(pairs))
 
-    def force_once():
-        lj_forces(system.pos, system.box, pairs, epsilon=epsilon, sigma=sigma, rcut=rcut)
+    if backend == "cpp":
+        pairs64 = pairs.astype(np.int64, copy=False)
+
+        def force_once():
+            force = np.zeros_like(system.pos)
+            integrator.md_cpp.lj_forces_cpp(
+                system.pos,
+                force,
+                system.box,
+                pairs64,
+                float(epsilon),
+                float(sigma),
+                float(rcut),
+            )
+    else:
+        def force_once():
+            lj_forces(system.pos, system.box, pairs, epsilon=epsilon, sigma=sigma, rcut=rcut)
 
     stats = _time_repeated(force_once, repeats=repeats, warmup=warmup)
 
     return {
         "benchmark": "force_evaluation",
+        "backend": backend,
         "N": int(system.N),
         "pairs": n_pairs,
         **_stats_dict(stats),
@@ -146,28 +165,60 @@ def benchmark_integrator(
     rcut: float,
     repeats: int = 3,
     warmup_steps: int = 5,
+    backend: str = "python",
 ) -> dict:
     """Benchmark full NVE velocity-Verlet throughput."""
+    backend = resolve_backend(backend)
     if n_steps <= 0:
         raise ValueError("n_steps must be positive")
-
-    def run_steps():
-        s = system.copy()
-        for _ in range(n_steps):
-            step_nve(s, dt, epsilon=epsilon, sigma=sigma, rcut=rcut)
 
     # Warmup with a shorter run so compilation/import/cache effects do not dominate.
     for _ in range(max(0, warmup_steps)):
         s = system.copy()
-        step_nve(s, dt, epsilon=epsilon, sigma=sigma, rcut=rcut)
+        step_nve(s, dt, epsilon=epsilon, sigma=sigma, rcut=rcut, backend=backend)
 
-    stats = _time_repeated(run_steps, repeats=repeats, warmup=0)
+    # Prepare independent systems BEFORE timing
+    systems = [system.copy() for _ in range(repeats)]
+    system_iter = iter(systems)
+
+    rebuild_counts = []
+
+    def run_steps():
+        s = next(system_iter)
+
+        # Count only rebuilds occurring during this trajectory
+        s.nl.rebuild_count = 0
+
+        for _ in range(n_steps):
+            step_nve(
+                s,
+                dt,
+                epsilon=epsilon,
+                sigma=sigma,
+                rcut=rcut,
+                backend=backend,
+            )
+
+        rebuild_counts.append(s.nl.rebuild_count)
+
+    stats = _time_repeated(
+        run_steps,
+        repeats=repeats,
+        warmup=0,
+    )
+
+    # Average rebuilds per timed trajectory
+    rebuilds = statistics.mean(rebuild_counts)
+
     steps_per_second = n_steps / stats.mean_seconds
     atom_steps_per_second = system.N * steps_per_second
-    simulated_ns_per_day = steps_per_second * dt * 86400.0e-6  # fs/step -> ns/day
+    simulated_ns_per_day = (
+        steps_per_second * dt * 86400.0e-6
+    )
 
     return {
         "benchmark": "integrator_nve",
+        "backend": backend,
         "N": int(system.N),
         "dt_fs": float(dt),
         "n_steps_per_repeat": int(n_steps),
@@ -175,6 +226,8 @@ def benchmark_integrator(
         "steps_per_second": float(steps_per_second),
         "atom_steps_per_second": float(atom_steps_per_second),
         "simulated_ns_per_day": float(simulated_ns_per_day),
+        "neighbor_rebuilds": float(rebuilds),
+        "neighbor_rebuilds_per_1000_steps": float(rebuilds / n_steps * 1000.0),
     }
 
 
@@ -190,8 +243,10 @@ def benchmark_one_size(
     warmup: int = 2,
     seed: int = 123,
     thermal_displacement: float = 0.01,
+    backend: str = "python",
 ) -> dict:
     """Run all standard benchmarks for one system size."""
+    backend = resolve_backend(backend)
     system, a, sigma, eps, rcut = build_system(
         metal=metal,
         nx=nx,
@@ -218,16 +273,20 @@ def benchmark_one_size(
         "epsilon": float(eps),
         "rcut": float(rcut),
         "skin": float(system.skin),
+        "backend": backend,
     }
 
     return {
         "metadata": metadata,
         "neighbor_build": benchmark_neighbor_build(system.copy(), repeats=repeats, warmup=warmup),
         "force_evaluation": benchmark_force_evaluation(
-            system.copy(), eps, sigma, rcut, repeats=repeats, warmup=warmup
+            system.copy(), eps, sigma, rcut, repeats=repeats, warmup=warmup, backend=backend
         ),
         "integrator_nve": benchmark_integrator(
-            system.copy(), dt, n_steps, eps, sigma, rcut, repeats=max(1, repeats // 2), warmup_steps=warmup
+            system.copy(), dt, n_steps, eps, sigma, rcut,
+            repeats=repeats,
+            warmup_steps=warmup,
+            backend=backend,
         ),
     }
 
@@ -242,9 +301,10 @@ def run_size_scaling_benchmarks(
     warmup: int = 2,
     seed: int = 123,
     thermal_displacement: float = 0.01,
-    backend: str = "auto",
+    backend: str = "python",
 ) -> dict:
     """Run the standard size-scaling performance suite."""
+    backend = resolve_backend(backend)
     print(" Starting performance suite...")
     t0 = time.perf_counter()
 
@@ -263,12 +323,18 @@ def run_size_scaling_benchmarks(
                 warmup=warmup,
                 seed=seed,
                 thermal_displacement=thermal_displacement,
+                backend=backend,
             )
         )
 
     return {
         "suite": "FCC MD Performance Suite",
         "backend": backend,
+        "metadata": {
+            "metal": metal,
+            "backend": backend,
+            "dt": float(dt),
+        },
         "environment": _environment_metadata(),
         "parameters": {
             "metal": metal,

@@ -19,6 +19,7 @@ def test_timestep_refinement(
     epsilon,
     sigma,
     rcut,
+    backend="python",
 ):
     trajectories = {}
 
@@ -33,6 +34,7 @@ def test_timestep_refinement(
                 epsilon=epsilon,
                 sigma=sigma,
                 rcut=rcut,
+                backend=backend,
             )
 
         trajectories[dt_test] = {

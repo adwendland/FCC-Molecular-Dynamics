@@ -11,6 +11,7 @@ from md.lattice import make_fcc_lattice
 from md.system import System
 
 from md.integrator import (
+    resolve_backend,
     step_nvt_berendsen,
 )
 
@@ -80,8 +81,10 @@ def run_validation_suite(
     show_plots=False,
     output_root=None,
     run_name=None,
+    backend="python",
 ):
     start_time = time.perf_counter()
+    backend = resolve_backend(backend)
 
     if tests is None:
         tests = set(AVAILABLE_TESTS)
@@ -127,6 +130,7 @@ def run_validation_suite(
             epsilon=eps,
             sigma=sigma,
             rcut=rcut,
+            backend=backend,
         )
 
     results = {}
@@ -138,6 +142,7 @@ def run_validation_suite(
         "nz": nz,
         "N": system.N,
         "T0": T0,
+        "backend": backend,
         "dt": dt,
         "n_steps": n_steps,
         "time_ps": n_steps * dt / 1000.0,
@@ -180,6 +185,7 @@ def run_validation_suite(
             sigma=sigma,
             rcut=rcut,
             sample_every=sample_every,
+            backend=backend,
         )
 
         e = results["energy_drift"]
@@ -213,6 +219,7 @@ def run_validation_suite(
             sigma=sigma,
             rcut=rcut,
             sample_every=sample_every,
+            backend=backend,
         )
 
         m = results["momentum"]
@@ -231,6 +238,7 @@ def run_validation_suite(
             epsilon=eps,
             sigma=sigma,
             rcut=rcut,
+            backend=backend,
         )
 
         r = results["timestep_refinement"]
@@ -257,6 +265,7 @@ def run_validation_suite(
             sigma=sigma,
             rcut=rcut,
             sample_every=sample_every,
+            backend=backend,
         )
 
         temp = results["temperature_stability"]
@@ -281,6 +290,7 @@ def run_validation_suite(
             sigma=sigma,
             rcut=rcut,
             sample_every=sample_every,
+            backend=backend,
         )
 
         ke = results["total_kinetic_energy"]
@@ -300,6 +310,7 @@ def run_validation_suite(
             sigma=sigma,
             rcut=rcut,
             sample_every=sample_every,
+            backend=backend,
         )
 
         comp = results["component_equipartition"]
@@ -434,6 +445,7 @@ def print_validation_report(results):
     print(f"{'Lattice size':28s}: {meta['nx']} x {meta['ny']} x {meta['nz']}")
     print(f"{'Atoms':28s}: {meta['N']}")
     print(f"{'Target temperature':28s}: {meta['T0']:.2f} K")
+    print(f"{'Backend':28s}: {meta['backend'].upper()}")
     print(f"{'Time step':28s}: {meta['dt']:.4f} fs")
     print(f"{'Simulation time':28s}: {sim_time_fs:.4f} fs ({sim_time_ps:.4f} ps)")
     print(f"{'Wall runtime':28s}: {runtime_str}")

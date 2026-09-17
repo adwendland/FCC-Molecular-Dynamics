@@ -24,6 +24,7 @@ from md.analysis.analysis_driver import (  # noqa: E402
     run_analysis_suite,
 )
 from md.constants import get_eps, get_lattice_constant, get_sigma  # noqa: E402
+from md.integrator import cpp_backend_available  # noqa: E402
 from md.performance.performance_driver import (  # noqa: E402
     print_performance_report,
     run_performance_suite,
@@ -681,7 +682,7 @@ def _performance_subtitle_from_results(results: dict[str, Any], detail: str = ""
     meta = results.get("metadata", {})
 
     metal = meta.get("metal", "")
-    backend = meta.get("backend", meta.get("backend_label", "auto"))
+    backend = meta.get("backend", meta.get("backend_label", "python"))
     dt = meta.get("dt", None)
 
     parts = []
@@ -689,9 +690,7 @@ def _performance_subtitle_from_results(results: dict[str, Any], detail: str = ""
         parts.append(str(metal))
     if backend:
         backend_text = str(backend)
-        if backend_text.lower() == "auto":
-            backend_text = "Auto backend"
-        elif backend_text.lower() in ("cpp", "c++", "pybind11"):
+        if backend_text.lower() in ("cpp", "c++", "pybind11"):
             backend_text = "C++ backend"
         elif backend_text.lower() == "python":
             backend_text = "Python backend"
@@ -788,6 +787,7 @@ with st.sidebar:
     n_equil_steps = 0
     n_steps = 0
     nx = ny = nz = 3
+    backend = "python"
 
     st.divider()
 
@@ -804,10 +804,20 @@ with st.sidebar:
             T0 = st.number_input("Target temperature (K)", min_value=1.0, value=300.0, step=100.0)
             dt = st.selectbox("Timestep dt (fs)", DT_CHOICES, index=DT_CHOICES.index(0.1))
             thermal_displacement = st.selectbox("thermal disp.", THERMAL_DISPLACEMENT_CHOICES, index=2)
+            backend = st.selectbox(
+                "Backend",
+                ["python", "cpp"],
+                format_func=lambda value: "Python" if value == "python" else "C++",
+                key="analysis_backend",
+            )
+
+        if backend == "cpp" and not cpp_backend_available():
+            st.warning("C++ backend is not available in this build. Select Python or build the pybind11 extension.")
+        backend_ready = backend == "python" or cpp_backend_available()
 
         st.caption(
             f"Ready | {metal} | {nx}x{ny}x{nz} | {4*nx*ny*nz} atoms | "
-            f"{ensemble_label} | dt={dt:g} fs"
+            f"{ensemble_label} | {backend.upper()} backend | dt={dt:g} fs"
         )
         st.divider()
         st.subheader("Simulation / Analysis")
@@ -826,7 +836,9 @@ with st.sidebar:
         save_outputs = st.checkbox("Save .dat / report outputs", value=False)
         save_trajectory = st.checkbox("Save trajectory .npz and .xyz", value=True)
         save_plots = st.checkbox("Save plots", value=False)
-        run_clicked = st.button("Run analysis", type="primary", width="stretch")
+        run_clicked = st.button(
+            "Run analysis", type="primary", width="stretch", disabled=not backend_ready
+        )
 
     elif mode == "Validation":
         st.subheader("Validation system")
@@ -840,10 +852,20 @@ with st.sidebar:
             T0 = st.number_input("T0 (K)", min_value=1.0, value=300.0, step=100.0)
             dt = st.selectbox("Production dt (fs)", DT_CHOICES, index=DT_CHOICES.index(0.1))
             refinement_dt = st.selectbox("Refinement dt (fs)", DT_CHOICES, index=DT_CHOICES.index(0.04))
+            backend = st.selectbox(
+                "Backend",
+                ["python", "cpp"],
+                format_func=lambda value: "Python" if value == "python" else "C++",
+                key="validation_backend",
+            )
+
+        if backend == "cpp" and not cpp_backend_available():
+            st.warning("C++ backend is not available in this build. Select Python or build the pybind11 extension.")
+        backend_ready = backend == "python" or cpp_backend_available()
 
         st.caption(
             f"Ready | {metal} | {nx}x{ny}x{nz} | {4*nx*ny*nz} atoms | "
-            f"validation suite | dt={dt:g} fs"
+            f"validation suite | {backend.upper()} backend | dt={dt:g} fs"
         )
         st.divider()
         st.subheader("Validation")
@@ -863,7 +885,9 @@ with st.sidebar:
         st.caption("Validation uses fixed ensembles internally: NVE for conservation/convergence, NVT where thermostatted sampling is appropriate.")
         save_outputs = st.checkbox("Save validation outputs", value=False)
         save_plots = st.checkbox("Save validation plots", value=False)
-        run_clicked = st.button("Run validation", type="primary", width="stretch")
+        run_clicked = st.button(
+            "Run validation", type="primary", width="stretch", disabled=not backend_ready
+        )
 
     else:
         st.subheader("Benchmark system")
@@ -873,9 +897,21 @@ with st.sidebar:
             T0 = st.number_input("Target temperature (K)", min_value=1.0, value=300.0, step=100.0)
         with c2:
             dt = st.selectbox("Timestep dt (fs)", DT_CHOICES, index=DT_CHOICES.index(0.1))
-            backend = st.selectbox("Backend", ["auto", "python", "serial-baseline"], index=0)
+            backend = st.selectbox(
+                "Backend",
+                ["python", "cpp"],
+                format_func=lambda value: "Python" if value == "python" else "C++",
+                key="performance_backend",
+            )
 
-        st.caption(f"Ready | {metal} | performance benchmark | NVE timing kernel | dt={dt:g} fs")
+        if backend == "cpp" and not cpp_backend_available():
+            st.warning("C++ backend is not available in this build. Select Python or build the pybind11 extension.")
+        backend_ready = backend == "python" or cpp_backend_available()
+
+        st.caption(
+            f"Ready | {metal} | performance benchmark | {backend.upper()} backend | "
+            f"NVE timing kernel | dt={dt:g} fs"
+        )
         st.divider()
         st.subheader("Performance")
         sizes_text = st.text_input("Benchmark sizes", value="3x3x3,4x4x4,5x5x5")
@@ -887,7 +923,9 @@ with st.sidebar:
         repeats = st.number_input("Repeats", min_value=1, value=5, step=1)
         warmup = st.number_input("Warmup repeats", min_value=0, value=2, step=1)
         save_outputs = st.checkbox("Save performance outputs", value=False)
-        run_clicked = st.button("Run performance", type="primary", width="stretch")
+        run_clicked = st.button(
+            "Run performance", type="primary", width="stretch", disabled=not backend_ready
+        )
 
     # st.divider()
     # st.subheader("Report preview")
@@ -981,6 +1019,7 @@ if run_clicked:
                     analyses=analyses,
                     seed=123,
                     thermal_displacement=float(thermal_displacement),
+                    backend=backend,
                     save_outputs=bool(save_outputs),
                     save_trajectory=bool(save_trajectory),
                     save_plots=bool(save_plots),
@@ -1008,6 +1047,7 @@ if run_clicked:
                     refinement_dt=float(refinement_dt),
                     refinement_steps=int(refinement_steps),
                     tests=tests,
+                    backend=backend,
                     save_outputs=bool(save_outputs),
                     save_plots=bool(save_plots),
                     show_plots=False,

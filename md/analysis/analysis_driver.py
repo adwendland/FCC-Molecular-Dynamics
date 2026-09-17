@@ -12,7 +12,7 @@ import numpy as np
 from md.constants import get_lattice_constant, get_sigma, get_eps, get_mass_internal
 from md.lattice import make_fcc_lattice
 from md.system import System
-from md.integrator import step_nve, step_nvt_berendsen
+from md.integrator import resolve_backend, step_nve, step_nvt_berendsen
 from md.utils import write_xyz
 from md.plotting import (
     plot_temperature,
@@ -110,6 +110,7 @@ def run_simulation(
     rcut,
     xyz_file=None,
     xyz_every=None,
+    backend="python",
 ):
     if ensemble not in {"nve", "nvt"}:
         raise ValueError("ensemble must be 'nve' or 'nvt'")
@@ -143,7 +144,14 @@ def run_simulation(
 
     for step in range(1, n_steps + 1):
         if ensemble == "nve":
-            step_nve(system, dt, epsilon=epsilon, sigma=sigma, rcut=rcut)
+            step_nve(
+                system,
+                dt,
+                epsilon=epsilon,
+                sigma=sigma,
+                rcut=rcut,
+                backend=backend,
+            )
         else:
             step_nvt_berendsen(
                 system,
@@ -153,6 +161,7 @@ def run_simulation(
                 epsilon=epsilon,
                 sigma=sigma,
                 rcut=rcut,
+                backend=backend,
             )
 
         if xyz_file is not None and xyz_every is not None and step % xyz_every == 0:
@@ -414,8 +423,10 @@ def run_analysis_suite(
     save_trajectory=False,
     save_plots=False,
     show_plots=False,
+    backend="python",
 ):
     start_time = time.perf_counter()
+    backend = resolve_backend(backend)
 
     if analyses is None:
         analyses = set(AVAILABLE_ANALYSES)
@@ -450,6 +461,7 @@ def run_analysis_suite(
             epsilon=eps,
             sigma=sigma,
             rcut=rcut,
+            backend=backend,
         )
 
     print("Starting production steps...")
@@ -465,6 +477,7 @@ def run_analysis_suite(
         epsilon=eps,
         sigma=sigma,
         rcut=rcut,
+        backend=backend,
         xyz_file=xyz_file,
         xyz_every=xyz_every,
     )
@@ -488,6 +501,7 @@ def run_analysis_suite(
             "N": system.N,
             "T0": T0,
             "ensemble": ensemble,
+            "backend": backend,
             "dt": dt,
             "n_equil_steps": n_equil_steps,
             "n_steps": n_steps,
@@ -834,6 +848,7 @@ def print_analysis_report(results):
     print(f"{'Lattice size':28s}: {meta['nx']} x {meta['ny']} x {meta['nz']}")
     print(f"{'Atoms':28s}: {meta['N']}")
     print(f"{'Ensemble':28s}: {meta['ensemble'].upper()}")
+    print(f"{'Backend':28s}: {meta['backend'].upper()}")
     print(f"{'Target temperature':28s}: {meta['T0']:.2f} K")
     print(f"{'Production time step':28s}: {meta['dt']:.4f} fs")
     print(f"{'Simulation time':28s}: {sim_time_fs:.4f} fs ({sim_time_ps:.4f} ps)")

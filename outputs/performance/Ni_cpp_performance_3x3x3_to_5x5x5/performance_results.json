@@ -1,0 +1,231 @@
+{
+    "suite": "FCC MD Performance Suite",
+    "backend": "cpp",
+    "metadata": {
+        "metal": "Ni",
+        "backend": "cpp",
+        "dt": 0.01
+    },
+    "environment": {
+        "python": "3.13.9",
+        "platform": "Windows-11-10.0.26200-SP0",
+        "processor": "Intel64 Family 6 Model 140 Stepping 1, GenuineIntel",
+        "cpu_count": 8,
+        "omp_num_threads": null,
+        "mkl_num_threads": null,
+        "openblas_num_threads": null
+    },
+    "parameters": {
+        "metal": "Ni",
+        "T0": 300.0,
+        "dt_fs": 0.01,
+        "n_steps": 500,
+        "repeats": 5,
+        "warmup": 2,
+        "seed": 123,
+        "thermal_displacement": 0.01,
+        "sizes": [
+            [
+                3,
+                3,
+                3
+            ],
+            [
+                4,
+                4,
+                4
+            ],
+            [
+                5,
+                5,
+                5
+            ]
+        ]
+    },
+    "cases": [
+        {
+            "metadata": {
+                "metal": "Ni",
+                "nx": 3,
+                "ny": 3,
+                "nz": 3,
+                "N": 108,
+                "T0": 300.0,
+                "dt_fs": 0.01,
+                "lattice_constant": 3.52,
+                "sigma": 2.273573528694146,
+                "epsilon": 0.24500724975000002,
+                "rcut": 5.683933821735366,
+                "skin": 0.3,
+                "backend": "cpp"
+            },
+            "neighbor_build": {
+                "benchmark": "neighbor_build",
+                "N": 108,
+                "pairs": 3571,
+                "candidate_pairs": 5778,
+                "mean_seconds": 0.021445839997613802,
+                "median_seconds": 0.02147559999139048,
+                "min_seconds": 0.020597599999746308,
+                "max_seconds": 0.022061499999836087,
+                "std_seconds": 0.0005452935209801109,
+                "repeats": 5,
+                "builds_per_second": 46.62908984265789,
+                "candidate_pairs_per_second": 269422.88111087726
+            },
+            "force_evaluation": {
+                "benchmark": "force_evaluation",
+                "backend": "cpp",
+                "N": 108,
+                "pairs": 3571,
+                "mean_seconds": 5.9780001174658536e-05,
+                "median_seconds": 5.9600017266348004e-05,
+                "min_seconds": 5.8200006606057286e-05,
+                "max_seconds": 6.230000872164965e-05,
+                "std_seconds": 1.6422592552401409e-06,
+                "repeats": 5,
+                "force_calls_per_second": 16728.002347780348,
+                "pair_evaluations_per_second": 59735696.38392363
+            },
+            "integrator_nve": {
+                "benchmark": "integrator_nve",
+                "backend": "cpp",
+                "N": 108,
+                "dt_fs": 0.01,
+                "n_steps_per_repeat": 500,
+                "mean_seconds": 0.0782615999924019,
+                "median_seconds": 0.07779499999014661,
+                "min_seconds": 0.07752709998749197,
+                "max_seconds": 0.08008400001563132,
+                "std_seconds": 0.0010491651833242264,
+                "repeats": 5,
+                "steps_per_second": 6388.829260436063,
+                "atom_steps_per_second": 689993.5601270949,
+                "simulated_ns_per_day": 5.519948481016759
+            }
+        },
+        {
+            "metadata": {
+                "metal": "Ni",
+                "nx": 4,
+                "ny": 4,
+                "nz": 4,
+                "N": 256,
+                "T0": 300.0,
+                "dt_fs": 0.01,
+                "lattice_constant": 3.52,
+                "sigma": 2.273573528694146,
+                "epsilon": 0.24500724975000002,
+                "rcut": 5.683933821735366,
+                "skin": 0.3,
+                "backend": "cpp"
+            },
+            "neighbor_build": {
+                "benchmark": "neighbor_build",
+                "N": 256,
+                "pairs": 10001,
+                "candidate_pairs": 32640,
+                "mean_seconds": 0.11965509999427013,
+                "median_seconds": 0.11976319999666885,
+                "min_seconds": 0.118379499996081,
+                "max_seconds": 0.12046819998067804,
+                "std_seconds": 0.0007751334984005748,
+                "repeats": 5,
+                "builds_per_second": 8.357353761334759,
+                "candidate_pairs_per_second": 272784.02676996647
+            },
+            "force_evaluation": {
+                "benchmark": "force_evaluation",
+                "backend": "cpp",
+                "N": 256,
+                "pairs": 10001,
+                "mean_seconds": 0.00016003999626263977,
+                "median_seconds": 0.00015919998986646533,
+                "min_seconds": 0.00015819998225197196,
+                "max_seconds": 0.00016339999274350703,
+                "std_seconds": 2.036663728156042e-06,
+                "repeats": 5,
+                "force_calls_per_second": 6248.438036445037,
+                "pair_evaluations_per_second": 62490628.80248682
+            },
+            "integrator_nve": {
+                "benchmark": "integrator_nve",
+                "backend": "cpp",
+                "N": 256,
+                "dt_fs": 0.01,
+                "n_steps_per_repeat": 500,
+                "mean_seconds": 0.1928394999995362,
+                "median_seconds": 0.19230569998035207,
+                "min_seconds": 0.18807309999829158,
+                "max_seconds": 0.19943000000785105,
+                "std_seconds": 0.0041280105619808955,
+                "repeats": 5,
+                "steps_per_second": 2592.82978850911,
+                "atom_steps_per_second": 663764.4258583322,
+                "simulated_ns_per_day": 2.240204937271871
+            }
+        },
+        {
+            "metadata": {
+                "metal": "Ni",
+                "nx": 5,
+                "ny": 5,
+                "nz": 5,
+                "N": 500,
+                "T0": 300.0,
+                "dt_fs": 0.01,
+                "lattice_constant": 3.52,
+                "sigma": 2.273573528694146,
+                "epsilon": 0.24500724975000002,
+                "rcut": 5.683933821735366,
+                "skin": 0.3,
+                "backend": "cpp"
+            },
+            "neighbor_build": {
+                "benchmark": "neighbor_build",
+                "N": 500,
+                "pairs": 19528,
+                "candidate_pairs": 124750,
+                "mean_seconds": 0.4617245199973695,
+                "median_seconds": 0.4552673000143841,
+                "min_seconds": 0.45410949998768046,
+                "max_seconds": 0.47266540001146495,
+                "std_seconds": 0.009607263798926647,
+                "repeats": 5,
+                "builds_per_second": 2.165793577533411,
+                "candidate_pairs_per_second": 270182.74879729305
+            },
+            "force_evaluation": {
+                "benchmark": "force_evaluation",
+                "backend": "cpp",
+                "N": 500,
+                "pairs": 19528,
+                "mean_seconds": 0.0003202599938958883,
+                "median_seconds": 0.00031949998810887337,
+                "min_seconds": 0.00031809997744858265,
+                "max_seconds": 0.0003228000132367015,
+                "std_seconds": 1.96291094741013e-06,
+                "repeats": 5,
+                "force_calls_per_second": 3122.463058327182,
+                "pair_evaluations_per_second": 60975458.6030132
+            },
+            "integrator_nve": {
+                "benchmark": "integrator_nve",
+                "backend": "cpp",
+                "N": 500,
+                "dt_fs": 0.01,
+                "n_steps_per_repeat": 500,
+                "mean_seconds": 0.3573660599940922,
+                "median_seconds": 0.35564829999930225,
+                "min_seconds": 0.34951440000440925,
+                "max_seconds": 0.36755269998684525,
+                "std_seconds": 0.007714644611006705,
+                "repeats": 5,
+                "steps_per_second": 1399.1255913006,
+                "atom_steps_per_second": 699562.7956503,
+                "simulated_ns_per_day": 1.2088445108837185
+            }
+        }
+    ],
+    "runtime_seconds": 8.073649900004966
+}

@@ -34,6 +34,7 @@ from md.analysis.analysis_driver import (  # noqa: E402
     run_analysis_suite,
 )
 from md.constants import get_eps, get_lattice_constant, get_sigma  # noqa: E402
+from md.integrator import resolve_backend  # noqa: E402
 from md.performance.performance_driver import (  # noqa: E402
     print_performance_report,
     run_performance_suite,
@@ -604,6 +605,9 @@ class LammpsMDGUI(tk.Tk):
         ]
         
         self._combo(system, 7, "thermal disp.", vars_["thermal_displacement"], disp_values)
+
+        vars_["backend"] = tk.StringVar(value=str(defaults.get("backend", "python")))
+        self._combo(system, 8, "backend", vars_["backend"], ["python", "cpp"], width=12)
         setattr(self, f"{prefix}_vars", vars_)
         return vars_
 
@@ -697,12 +701,12 @@ class LammpsMDGUI(tk.Tk):
         vars_["n_steps"] = tk.StringVar(value="100")
         vars_["repeats"] = tk.StringVar(value="5")
         vars_["warmup"] = tk.StringVar(value="2")
-        vars_["backend"] = tk.StringVar(value="auto")
+        vars_["backend"] = tk.StringVar(value="python")
         self._entry(ctrl, 0, "sizes", vars_["sizes"], width=22)
         self._entry(ctrl, 1, "steps/repeat", vars_["n_steps"])
         self._entry(ctrl, 2, "repeats", vars_["repeats"])
         self._entry(ctrl, 3, "warmup", vars_["warmup"])
-        self._combo(ctrl, 4, "backend", vars_["backend"], ["auto", "python", "cpp"], width=12)
+        self._combo(ctrl, 4, "backend", vars_["backend"], ["python", "cpp"], width=12)
 
         output = self._section(self.performance_tab, "Output")
         vars_["save_outputs"] = tk.BooleanVar(value=False)
@@ -779,6 +783,7 @@ class LammpsMDGUI(tk.Tk):
                 analyses=analyses,
                 seed=int(v["seed"].get()),
                 thermal_displacement=float(v["thermal_displacement"].get()),
+                backend=resolve_backend(v["backend"].get()),
                 save_outputs=bool(v["save_outputs"].get()),
                 save_trajectory=bool(v["save_trajectory"].get()),
                 save_plots=bool(v["save_plots"].get()),
@@ -829,6 +834,7 @@ class LammpsMDGUI(tk.Tk):
                 refinement_dt=float(v["refinement_dt"].get()),
                 refinement_steps=int(v["refinement_steps"].get()),
                 tests=tests,
+                backend=resolve_backend(v["backend"].get()),
                 save_outputs=bool(v["save_outputs"].get()),
                 save_plots=bool(v["save_plots"].get()),
                 show_plots=False,
@@ -863,7 +869,7 @@ class LammpsMDGUI(tk.Tk):
                 warmup=int(v["warmup"].get()),
                 seed=int(v["seed"].get()),
                 thermal_displacement=float(v["thermal_displacement"].get()),
-                backend=v["backend"].get(),
+                backend=resolve_backend(v["backend"].get()),
                 save_outputs=bool(v["save_outputs"].get()),
             )
             # Show a representative deck using first benchmark size.
@@ -934,8 +940,12 @@ class LammpsMDGUI(tk.Tk):
             nz = int(vars_.get("nz", tk.StringVar(value="4")).get())
             atoms = 4 * nx * ny * nz
             dt = float(vars_["dt"].get())
+            backend = vars_.get("backend", tk.StringVar(value="python")).get()
             self.left_status.config(
-                text=f"{prefix} | {metal} | {nx}x{ny}x{nz} | {atoms} atoms | {ensemble.upper()} | dt={dt:g} fs"
+                text=(
+                    f"{prefix} | {metal} | {nx}x{ny}x{nz} | {atoms} atoms | "
+                    f"{ensemble.upper()} | {backend.upper()} backend | dt={dt:g} fs"
+                )
             )
         except Exception:
             self.left_status.config(text=f"{prefix}")
@@ -982,6 +992,7 @@ class LammpsMDGUI(tk.Tk):
             f"lattice                    : {meta.get('nx')} x {meta.get('ny')} x {meta.get('nz')}",
             f"atoms                      : {meta.get('N')}",
             f"ensemble                   : {meta.get('ensemble')}",
+            f"backend                    : {meta.get('backend')}",
             f"dt                         : {fmt(meta.get('dt'))} fs",
             f"simulation time            : {fmt(results.get('simulation_time_fs'))} fs",
             f"runtime                    : {fmt(results.get('runtime_seconds'))} s",
@@ -998,11 +1009,13 @@ class LammpsMDGUI(tk.Tk):
         return "\n".join(lines)
 
     def _validation_status_text(self, results: dict[str, Any]) -> str:
+        meta = results.get("metadata", {})
         summary = results.get("summary", {})
         n_pass = sum(bool(v) for v in summary.values())
         lines = [
             "Validation status",
             "-" * 70,
+            f"backend                    : {meta.get('backend')}",
             f"overall                    : {'PASS' if n_pass == len(summary) and summary else 'FAIL'} ({n_pass}/{len(summary)})",
             "",
         ]
@@ -1018,6 +1031,8 @@ class LammpsMDGUI(tk.Tk):
     def _performance_table_text(self, results: dict[str, Any]) -> str:
         lines = [
             "Performance table",
+            "-" * 106,
+            f"Backend: {str(results.get('backend', 'python')).upper()}",
             "-" * 106,
             f"{'size':>8s} {'atoms':>8s} {'pairs':>10s} {'NL build ms':>14s} {'force ms':>12s} {'steps/s':>12s} {'atom-steps/s':>16s} {'ns/day':>12s}",
             "-" * 106,

@@ -20,7 +20,7 @@ def momentum_scale(system):
 
 
 def test_momentum_conservation(
-    system, dt, n_steps, epsilon, sigma, rcut, sample_every=1
+    system, dt, n_steps, epsilon, sigma, rcut, sample_every=1, backend="python"
 ):
     times = []
     momenta = []
@@ -29,10 +29,10 @@ def test_momentum_conservation(
     P0 = total_momentum(system)
     P_scale = momentum_scale(system)
 
-    step_nve(system, 0.0, epsilon=epsilon, sigma=sigma, rcut=rcut)
+    step_nve(system, 0.0, epsilon=epsilon, sigma=sigma, rcut=rcut, backend=backend)
 
     for step in range(n_steps):
-        step_nve(system, dt, epsilon=epsilon, sigma=sigma, rcut=rcut)
+        step_nve(system, dt, epsilon=epsilon, sigma=sigma, rcut=rcut, backend=backend)
 
         if step % sample_every == 0:
             P = total_momentum(system)

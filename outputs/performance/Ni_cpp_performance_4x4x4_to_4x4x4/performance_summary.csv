@@ -1,0 +1,2 @@
+nx,ny,nz,N,pairs,neighbor_build_mean_s,neighbor_build_min_s,force_mean_s,force_min_s,pair_evaluations_per_second,integrator_mean_s,steps_per_second,atom_steps_per_second,simulated_ns_per_day
+4,4,4,256,10001,0.12213551999884657,0.11833009999827482,0.00015906000044196844,0.00015810001059435308,62875644.236206144,2.0477167999953965,2441.7438974038014,625086.4377353732,2.1096667273568843

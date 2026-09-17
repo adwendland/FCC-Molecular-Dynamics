@@ -15,6 +15,7 @@ def test_temperature_stability(
     sigma,
     rcut,
     sample_every=10,
+    backend="python",
 ):
     """
     Validate Berendsen NVT thermostat by checking that the mean temperature
@@ -35,6 +36,7 @@ def test_temperature_stability(
         epsilon=epsilon,
         sigma=sigma,
         rcut=rcut,
+        backend=backend,
     )
 
     for step in range(n_steps):
@@ -46,6 +48,7 @@ def test_temperature_stability(
             epsilon=epsilon,
             sigma=sigma,
             rcut=rcut,
+            backend=backend,
         )
 
         if step % sample_every == 0:
@@ -84,6 +87,7 @@ def test_component_equipartition(
     sigma,
     rcut,
     sample_every=10,
+    backend="python",
 ):
     """
     Check that kinetic energy is equally distributed among the
@@ -102,6 +106,7 @@ def test_component_equipartition(
         sigma=sigma,
         rcut=rcut,
         sample_every=sample_every,
+        backend=backend,
     )
 
     velocities = result["velocities"]      # shape = (nsamples, N, 3)
@@ -152,6 +157,7 @@ def test_total_kinetic_energy(
     sigma,
     rcut,
     sample_every=10,
+    backend="python",
 ):
     """
     Check whether average kinetic energy satisfies
@@ -171,6 +177,7 @@ def test_total_kinetic_energy(
         sigma=sigma,
         rcut=rcut,
         sample_every=sample_every,
+        backend=backend,
     )
 
     N = system.N

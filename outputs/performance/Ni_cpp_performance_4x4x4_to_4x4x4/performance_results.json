@@ -1,0 +1,101 @@
+{
+    "suite": "FCC MD Performance Suite",
+    "backend": "cpp",
+    "metadata": {
+        "metal": "Ni",
+        "backend": "cpp",
+        "dt": 0.01
+    },
+    "environment": {
+        "python": "3.13.9",
+        "platform": "Windows-11-10.0.26200-SP0",
+        "processor": "Intel64 Family 6 Model 140 Stepping 1, GenuineIntel",
+        "cpu_count": 8,
+        "omp_num_threads": null,
+        "mkl_num_threads": null,
+        "openblas_num_threads": null
+    },
+    "parameters": {
+        "metal": "Ni",
+        "T0": 300.0,
+        "dt_fs": 0.01,
+        "n_steps": 5000,
+        "repeats": 5,
+        "warmup": 2,
+        "seed": 123,
+        "thermal_displacement": 0.01,
+        "sizes": [
+            [
+                4,
+                4,
+                4
+            ]
+        ]
+    },
+    "cases": [
+        {
+            "metadata": {
+                "metal": "Ni",
+                "nx": 4,
+                "ny": 4,
+                "nz": 4,
+                "N": 256,
+                "T0": 300.0,
+                "dt_fs": 0.01,
+                "lattice_constant": 3.52,
+                "sigma": 2.273573528694146,
+                "epsilon": 0.24500724975000002,
+                "rcut": 5.683933821735366,
+                "skin": 0.3,
+                "backend": "cpp"
+            },
+            "neighbor_build": {
+                "benchmark": "neighbor_build",
+                "N": 256,
+                "pairs": 10001,
+                "candidate_pairs": 32640,
+                "mean_seconds": 0.12213551999884657,
+                "median_seconds": 0.11993379998602904,
+                "min_seconds": 0.11833009999827482,
+                "max_seconds": 0.12861000001430511,
+                "std_seconds": 0.00433458236802491,
+                "repeats": 5,
+                "builds_per_second": 8.187626335151673,
+                "candidate_pairs_per_second": 267244.1235793506
+            },
+            "force_evaluation": {
+                "benchmark": "force_evaluation",
+                "backend": "cpp",
+                "N": 256,
+                "pairs": 10001,
+                "mean_seconds": 0.00015906000044196844,
+                "median_seconds": 0.00015849998453631997,
+                "min_seconds": 0.00015810001059435308,
+                "max_seconds": 0.00016110000433400273,
+                "std_seconds": 1.2501989115991209e-06,
+                "repeats": 5,
+                "force_calls_per_second": 6286.9357300476095,
+                "pair_evaluations_per_second": 62875644.236206144
+            },
+            "integrator_nve": {
+                "benchmark": "integrator_nve",
+                "backend": "cpp",
+                "N": 256,
+                "dt_fs": 0.01,
+                "n_steps_per_repeat": 5000,
+                "mean_seconds": 2.0477167999953965,
+                "median_seconds": 2.0531661999993958,
+                "min_seconds": 2.0206390999956056,
+                "max_seconds": 2.0866116999823134,
+                "std_seconds": 0.027270728623279665,
+                "repeats": 5,
+                "steps_per_second": 2441.7438974038014,
+                "atom_steps_per_second": 625086.4377353732,
+                "simulated_ns_per_day": 2.1096667273568843,
+                "neighbor_rebuilds": 1.0,
+                "neighbor_rebuilds_per_1000_steps": 0.2
+            }
+        }
+    ],
+    "runtime_seconds": 11.209776300005615
+}
